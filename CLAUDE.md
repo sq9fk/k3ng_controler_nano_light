@@ -132,6 +132,17 @@ actually issue the stop request, and any re-press in the meantime cancels the pe
 window and behavior as before, just without stalling the loop. This diverges from upstream, so watch for conflicts if
 ever merging button-handling changes from `upstream`.
 
+### LCD: `OPTION_DISPLAY_HEADING` stays disabled
+
+Only `OPTION_DISPLAY_HEADING_AZ_ONLY` should be enabled for azimuth display, not the generic `OPTION_DISPLAY_HEADING` as
+well. With `FEATURE_ELEVATION_CONTROL` off, `OPTION_DISPLAY_HEADING`'s az-only branch *also* prints the azimuth heading
+(to `LCD_HEADING_ROW`, row 2) — duplicating what `OPTION_DISPLAY_HEADING_AZ_ONLY` already prints to row 1. Both were
+found enabled at once (upstream-default leftover): same number formatted and written to the LCD twice per refresh, and
+row 2 showed a redundant copy of row 1 instead of being free. The LCD buffering itself (`rotator_k3ngdisplay.cpp`) is
+already properly optimized — a pending/live double-buffer, rate-limited to `LCD_UPDATE_TIME`, with `update()` diffing
+per-character and only writing cells that actually changed — so this redundant-heading-option bug was the only real LCD
+issue, not the update mechanism.
+
 ## Flash/RAM budget (read before enabling any new FEATURE_*)
 
 The ATmega328P old-bootloader Nano has only **30720 B flash / 2048 B RAM**, and this codebase is large. With
