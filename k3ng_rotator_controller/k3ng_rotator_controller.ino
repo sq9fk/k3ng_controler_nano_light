@@ -1976,9 +1976,9 @@ void loop() {
     check_serial();
   #endif
 
-  read_headings();
-
-  service_rotation();
+  // upstream re-checks read_headings()/service_rotation() here to stay responsive around the GPS/ethernet/moon/sun
+  // tracking block below; this fork never enables those, so that extra pair was removed as dead weight - the next
+  // loop() iteration's read_headings()/service_rotation() at the top covers it
 
   check_for_dirty_configuration();
 
@@ -2029,10 +2029,6 @@ void loop() {
     service_gps();
   #endif // FEATURE_GPS
 
-  read_headings();
-
-  service_rotation();
- 
   #ifdef FEATURE_RTC
     service_rtc();
   #endif // FEATURE_RTC
@@ -3878,7 +3874,11 @@ void check_buttons(){
 
   #ifdef DEBUG_PROCESSES
     service_process_debug(DEBUG_PROCESSES_PROCESS_ENTER,PROCESS_CHECK_BUTTONS);
-  #endif  
+  #endif
+
+  #ifndef FEATURE_ADAFRUIT_BUTTONS
+    static unsigned long az_button_release_pending_time = 0;  // 0 = no release debounce in progress (non-blocking replacement for delay(200))
+  #endif // FEATURE_ADAFRUIT_BUTTONS
 
   #ifdef FEATURE_ADAFRUIT_BUTTONS
     int buttons = 0;
@@ -3951,21 +3951,28 @@ void check_buttons(){
 
 #else
   if ((azimuth_button_was_pushed) && (digitalReadEnhanced(button_ccw) == BUTTON_INACTIVE_STATE) && (digitalReadEnhanced(button_cw) == BUTTON_INACTIVE_STATE)) {
-    delay(200);
-    if ((digitalReadEnhanced(button_ccw) == BUTTON_INACTIVE_STATE) && (digitalReadEnhanced(button_cw) == BUTTON_INACTIVE_STATE)) {
-    #ifdef DEBUG_BUTTONS
-      debug.println("check_buttons: no AZ button depressed");
-    #endif // DEBUG_BUTTONS
-    #ifndef OPTION_BUTTON_RELEASE_NO_SLOWDOWN
-    submit_request(AZ, REQUEST_STOP, 0, DBG_CHECK_BUTTONS_RELEASE_NO_SLOWDOWN);
-    #if defined(FEATURE_LCD_DISPLAY)
-      perform_screen_redraw = 1;
-    #endif    
-    #else
-    submit_request(AZ, REQUEST_KILL, 0, DBG_CHECK_BUTTONS_RELEASE_KILL);
-    #endif // OPTION_BUTTON_RELEASE_NO_SLOWDOWN
-    azimuth_button_was_pushed = 0;
+    if (az_button_release_pending_time == 0) {
+      az_button_release_pending_time = millis();
+      if (az_button_release_pending_time == 0) {az_button_release_pending_time = 1;}  // avoid colliding with the "not pending" sentinel value
+    } else {
+      if ((millis() - az_button_release_pending_time) > 200) {  // non-blocking replacement for delay(200) - buttons have now read inactive for >200mS
+        #ifdef DEBUG_BUTTONS
+          debug.println("check_buttons: no AZ button depressed");
+        #endif // DEBUG_BUTTONS
+        #ifndef OPTION_BUTTON_RELEASE_NO_SLOWDOWN
+        submit_request(AZ, REQUEST_STOP, 0, DBG_CHECK_BUTTONS_RELEASE_NO_SLOWDOWN);
+        #if defined(FEATURE_LCD_DISPLAY)
+          perform_screen_redraw = 1;
+        #endif
+        #else
+        submit_request(AZ, REQUEST_KILL, 0, DBG_CHECK_BUTTONS_RELEASE_KILL);
+        #endif // OPTION_BUTTON_RELEASE_NO_SLOWDOWN
+        azimuth_button_was_pushed = 0;
+        az_button_release_pending_time = 0;
+      }
     }
+  } else {
+    az_button_release_pending_time = 0;  // button re-pressed (or wasn't pushed) - cancel any pending release debounce
   }
 #endif // FEATURE_ADAFRUIT_BUTTONS
 

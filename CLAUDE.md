@@ -71,6 +71,14 @@ fork.
 position reads, rotation state machine, button/preset checks, display refresh) — no RTOS, no async scheduler. Interrupts
 are only used for rotary/incremental encoder and pulse-position inputs.
 
+Upstream calls `read_headings()`/`service_rotation()` three times per `loop()` iteration, interspersed with the
+GPS/ethernet/moon/sun-tracking blocks, so rotation state stays responsive even if one of those (potentially slow) blocks
+is enabled. **This fork will never use GPS, ethernet, or moon/sun/satellite tracking** — confirmed by whoever's actually
+running this board — so the two extra `read_headings()`/`service_rotation()` pairs that existed purely to bracket those
+blocks were removed as dead weight; only the first pair (top of `loop()`) and the `read_headings()` that directly feeds
+`check_buttons()`/`check_overlap()`/`check_brake_release()` remain. If that "never" ever changes and one of those blocks
+gets enabled, put an equivalent `read_headings()`/`service_rotation()` pair back around it.
+
 ## RemoteQTH v3.3 hardware mapping (verified, not guessed)
 
 Pin assignments were originally derived by tracing the actual KiCad schematic/PCB netlist for this board
@@ -112,6 +120,17 @@ than every 500ms, and a debounce window longer than the real inter-pulse gap sil
 the bounce it's meant to fix). Keep this value well below the shortest real gap between pulses at full rotation speed.
 Since this whole option doesn't exist upstream, `git fetch upstream` merges won't touch it, but also won't ever
 reintroduce or update it — it's this fork's to maintain.
+
+### Fork-added code: non-blocking manual-button release debounce
+
+Upstream `check_buttons()` debounces the manual CW/CCW jog-button release with a blocking `delay(200)` — the entire
+`loop()` stalls for 200ms every time a physical button is released (position tracking is unaffected since it's
+interrupt-driven, but serial/LCD/everything else pauses). This was replaced with a non-blocking `millis()`-based
+timer (`az_button_release_pending_time`, a static local in `check_buttons()`): the first loop iteration where both
+buttons read inactive starts the timer instead of blocking; only once 200ms have elapsed *across* iterations does it
+actually issue the stop request, and any re-press in the meantime cancels the pending timer. Same 200ms debounce
+window and behavior as before, just without stalling the loop. This diverges from upstream, so watch for conflicts if
+ever merging button-handling changes from `upstream`.
 
 ## Flash/RAM budget (read before enabling any new FEATURE_*)
 
