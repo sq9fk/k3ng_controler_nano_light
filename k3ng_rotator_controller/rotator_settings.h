@@ -115,8 +115,8 @@ You can tweak these, but read the online documentation!
 
 #define TIMED_INTERVAL_ARRAY_SIZE 20
 
-#define LCD_COLUMNS 20 //16
-#define LCD_ROWS 4 //2       // this is automatically set below for HARDWARE_EA4TX_ARS_USB and HARDWARE_M0UPU
+#define LCD_COLUMNS 16 //16
+#define LCD_ROWS 2 //2       // this is automatically set below for HARDWARE_EA4TX_ARS_USB and HARDWARE_M0UPU
 #define LCD_UPDATE_TIME 1000           // LCD update time in milliseconds
 #define LCD_HHMM_CLOCK_POSITION LEFT          //LEFT or RIGHT
 #define LCD_HHMMSS_CLOCK_POSITION LEFT          //LEFT or RIGHT
@@ -138,13 +138,13 @@ You can tweak these, but read the online documentation!
 #define LCD_REDRAW_UPON_COMMANDS 0           // set to 1 to enable screen redraws upon commands and button presses
 
 #define LCD_HEADING_ROW 2
-#define LCD_HEADING_FIELD_SIZE 20
+#define LCD_HEADING_FIELD_SIZE 16
 #define LCD_AZ_ONLY_HEADING_ROW 1
-#define LCD_AZ_ONLY_HEADING_FIELD_SIZE 20
+#define LCD_AZ_ONLY_HEADING_FIELD_SIZE 16
 #define LCD_EL_ONLY_HEADING_ROW 2
-#define LCD_EL_ONLY_HEADING_FIELD_SIZE 20
+#define LCD_EL_ONLY_HEADING_FIELD_SIZE 16
 #define LCD_STATUS_ROW 1
-#define LCD_STATUS_FIELD_SIZE 20
+#define LCD_STATUS_FIELD_SIZE 16
 #define LCD_DIRECTION_ROW 1
 #define LCD_HHMMSS_CLOCK_ROW 1
 #define LCD_HHMM_CLOCK_ROW 1
