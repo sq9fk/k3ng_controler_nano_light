@@ -104,14 +104,14 @@
 #define OPTION_ENCODER_ENABLE_PULLUPS          // define to enable weak pullups on rotary encoder pins
 // #define OPTION_INCREMENTAL_ENCODER_PULLUPS  // define to enable weak pullups on 3 phase incremental rotary encoder pins
 //#define OPTION_PRESET_ENCODER_RELATIVE_CHANGE   // this makes the encoder(s) change the az or el in a relative fashion rather then store an absolute setting
-#define OPTION_PRESET_ENCODER_0_360_DEGREES
+// #define OPTION_PRESET_ENCODER_0_360_DEGREES  // disabled: this board is a 450-degree overlap rotator, preset must reach past 360
 
 /* position sensor options */
 // #define OPTION_AZ_POSITION_ROTARY_ENCODER_HARD_LIMIT // stop azimuth at lower and upper limit rather than rolling over
 // #define OPTION_EL_POSITION_ROTARY_ENCODER_HARD_LIMIT // stop elevation at lower and upper limits rather than rolling over
-// #define OPTION_AZ_POSITION_PULSE_HARD_LIMIT  // stop azimuth at lower and upper limit rather than rolling over
+#define OPTION_AZ_POSITION_PULSE_HARD_LIMIT  // stop azimuth at lower and upper limit rather than rolling over
 // #define OPTION_EL_POSITION_PULSE_HARD_LIMIT  // stop elevation at lower and upper limits rather than rolling over
-// #define OPTION_POSITION_PULSE_INPUT_PULLUPS  // define to enable weak pullups on position pulse inputs
+#define OPTION_POSITION_PULSE_INPUT_PULLUPS  // define to enable weak pullups on position pulse inputs (reed switch/dry contact needs this)
 
 /* less often used features and options */
 #define OPTION_GS_232B_EMULATION          // comment this out to default to Yaesu GS-232A emulation when using FEATURE_YAESU_EMULATION above
@@ -171,6 +171,7 @@
 // #define OPTION_NO_ELEVATION_CHECK_TARGET_DELAY
 // #define OPTION_BLINK_OVERLAP_LED
 // #define OPTION_EL_PULSE_DEBOUNCE
+#define OPTION_AZ_PULSE_DEBOUNCE  // fork-added (not upstream): debounces the reed-switch/contactron AZ pulse input on D2 - see AZ_POSITION_PULSE_DEBOUNCE in rotator_settings.h
 // #define OPTION_SCANCON_2RMHF3600_INC_ENCODER  // use with FEATURE_AZ_POSITION_INCREMENTAL_ENCODER and/or FEATURE_EL_POSITION_INCREMENTAL_ENCODER if using the ScanCon 2RMHF3600 incremental encoder
 // #define OPTION_RESET_METHOD_JMP_ASM_0
 #define OPTION_SAVE_MEMORY_EXCLUDE_EXTENDED_COMMANDS

@@ -1473,6 +1473,9 @@ struct config_t {
 #ifdef FEATURE_AZ_POSITION_PULSE_INPUT
   volatile float az_position_pulse_input_azimuth = 0;
   volatile byte last_known_az_state = 0;
+  #ifdef OPTION_AZ_PULSE_DEBOUNCE
+    unsigned long last_az_pulse_debounce = 0;
+  #endif //OPTION_AZ_PULSE_DEBOUNCE
 #endif // FEATURE_AZ_POSITION_PULSE_INPUT
 
 #ifdef FEATURE_EL_POSITION_PULSE_INPUT
@@ -12613,6 +12616,35 @@ void az_position_pulse_interrupt_handler(){
   az_pulse_counter++;
   #endif // DEBUG_POSITION_PULSE_INPUT
 
+  #ifdef OPTION_AZ_PULSE_DEBOUNCE //---------------------------------------------
+  if ((millis()-last_az_pulse_debounce) > AZ_POSITION_PULSE_DEBOUNCE) {
+    if (current_az_state() == ROTATING_CW) {
+      az_position_pulse_input_azimuth += (float)AZ_POSITION_PULSE_DEG_PER_PULSE;
+      last_known_az_state = ROTATING_CW;
+    } else {
+      if (current_az_state() == ROTATING_CCW) {
+        az_position_pulse_input_azimuth -= (float)AZ_POSITION_PULSE_DEG_PER_PULSE;
+        last_known_az_state = ROTATING_CCW;
+      } else {
+        #ifndef OPTION_PULSE_IGNORE_AMBIGUOUS_PULSES
+        if (last_known_az_state == ROTATING_CW) {
+          az_position_pulse_input_azimuth += (float)AZ_POSITION_PULSE_DEG_PER_PULSE;
+        } else {
+          if (last_known_az_state == ROTATING_CCW) {
+            az_position_pulse_input_azimuth -= (float)AZ_POSITION_PULSE_DEG_PER_PULSE;
+          }
+        }
+        #endif // OPTION_PULSE_IGNORE_AMBIGUOUS_PULSES
+        #ifdef DEBUG_POSITION_PULSE_INPUT
+        az_pulse_counter_ambiguous++;
+        #endif // DEBUG_POSITION_PULSE_INPUT
+      }
+    }
+    last_az_pulse_debounce = millis();
+  }
+
+  #else //OPTION_AZ_PULSE_DEBOUNCE -----------------------
+
   if (current_az_state() == ROTATING_CW) {
     az_position_pulse_input_azimuth += (float)AZ_POSITION_PULSE_DEG_PER_PULSE;
     last_known_az_state = ROTATING_CW;
@@ -12635,6 +12667,7 @@ void az_position_pulse_interrupt_handler(){
             #endif // DEBUG_POSITION_PULSE_INPUT
     }
   }
+  #endif //OPTION_AZ_PULSE_DEBOUNCE --------------------------
 
   #ifdef OPTION_AZ_POSITION_PULSE_HARD_LIMIT
     if (az_position_pulse_input_azimuth < configuration.azimuth_starting_point) {

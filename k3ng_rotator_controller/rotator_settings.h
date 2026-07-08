@@ -166,6 +166,8 @@ You can tweak these, but read the online documentation!
 #define AZ_POSITION_PULSE_DEG_PER_PULSE 0.5
 #define EL_POSITION_PULSE_DEG_PER_PULSE 0.5
 
+#define AZ_POSITION_PULSE_DEBOUNCE 20   // in ms - fork-added; keep well below the shortest real gap between pulses at full rotation speed, or real pulses get dropped
+
 #define NOT_PARKED_DETECT_TIME_MS 1000
 
 #define COMMAND_BUFFER_SIZE 50

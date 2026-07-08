@@ -84,14 +84,34 @@ doubt, physical wiring as reported by whoever has the board in hand wins over th
 | CW relay | D6 | via R3→Q3→RL1 |
 | CCW relay | D7 | via R2→Q2→RL2 |
 | Brake relay | D8 | via R1→Q1→RL3 |
-| Azimuth position | pulse input, D2 (INT0) | rotor gives pulse output, not analog voltage — `FEATURE_AZ_POSITION_PULSE_INPUT`; calibrate `AZ_POSITION_PULSE_DEG_PER_PULSE` in `rotator_settings.h` against the actual rotor spec |
+| Azimuth position | pulse input, D2 (INT0) | rotor position sensor is a reed switch/"contactron" (dry contact), not analog voltage — `FEATURE_AZ_POSITION_PULSE_INPUT`; calibrate `AZ_POSITION_PULSE_DEG_PER_PULSE` in `rotator_settings.h` against the actual rotor spec; `OPTION_POSITION_PULSE_INPUT_PULLUPS` must stay enabled since a dry contact needs the internal pull-up or D2 floats between pulses |
 | AREF | external | board supplies its own reference through R9, independent of which position-sensor feature is active — keep `OPTION_EXTERNAL_ANALOG_REFERENCE` enabled regardless, since switching to the internal reference while an external one is wired to AREF risks damaging the chip |
 | Manual CW/CCW jog buttons | CW=A5, CCW=A4 | moved off A2/A3 to free A2 for LCD D7 |
 | LCD (16x2, 4-bit) | RS=D12, E=D11, D4=D5, D5=D4, D6=D3, D7=A2 | D7 moved off D2 to free D2 for the azimuth pulse input above |
 | AZ preset rotary encoder | D10 / D9 | |
 
 The board is azimuth-only (`FEATURE_ELEVATION_CONTROL` stays off) and assumes a 450°-capable rotator
-(`AZIMUTH_ROTATION_CAPABILITY_EEPROM_INITIALIZE`).
+(`AZIMUTH_ROTATION_CAPABILITY_EEPROM_INITIALIZE`). Two things that must stay consistent with that 450° figure, because
+this codebase has no single "rotation capability" switch — every subsystem that handles the azimuth range does its own
+thing, and several default to a hardcoded 360°:
+- `OPTION_AZ_POSITION_PULSE_HARD_LIMIT` must stay **enabled** — without it, the pulse-counted azimuth wraps at a
+  hardcoded 360° instead of clamping at `azimuth_starting_point + azimuth_rotation_capability` (450°), corrupting
+  position tracking once the rotor swings into the overlap zone.
+- `OPTION_PRESET_ENCODER_0_360_DEGREES` must stay **disabled** — enabled, it clamps the front-panel preset knob at a
+  hardcoded 360°, making the 360°-450° overlap zone unreachable via the encoder.
+
+### Fork-added code: AZ pulse debounce (not upstream)
+
+Upstream K3NG only has pulse debounce for elevation (`OPTION_EL_PULSE_DEBOUNCE`/`EL_POSITION_PULSE_DEBOUNCE`) — there
+was no azimuth equivalent. Since this board's azimuth sensor is a mechanical reed switch (bounce-prone), the same
+pattern was ported to azimuth: `OPTION_AZ_PULSE_DEBOUNCE` (`rotator_features.h`) gates a debounce window,
+`AZ_POSITION_PULSE_DEBOUNCE` (`rotator_settings.h`, default 20 ms) sets it, and `az_position_pulse_interrupt_handler()`
+in the `.ino` has the same `#ifdef .../#else/#endif` structure as its EL counterpart. **Do not copy the EL default of
+500 ms here** — at `AZ_POSITION_PULSE_DEG_PER_PULSE` = 0.5°, a fast-moving rotator can generate real pulses much faster
+than every 500ms, and a debounce window longer than the real inter-pulse gap silently drops genuine pulses (worse than
+the bounce it's meant to fix). Keep this value well below the shortest real gap between pulses at full rotation speed.
+Since this whole option doesn't exist upstream, `git fetch upstream` merges won't touch it, but also won't ever
+reintroduce or update it — it's this fork's to maintain.
 
 ## Flash/RAM budget (read before enabling any new FEATURE_*)
 
