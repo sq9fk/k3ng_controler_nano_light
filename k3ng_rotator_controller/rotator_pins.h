@@ -18,10 +18,10 @@
 #define rotate_cw_ccw_pwm 0      // optional - PWM on CW and CCW output - set to 0 to disable (must be PWM capable pin)
 #define rotate_cw_freq 0         // optional - CW variable frequency output
 #define rotate_ccw_freq 0        // optional - CCW variable frequency output
-#define button_cw A2             // normally open button to ground for manual CW rotation (schematic pin: A2)
-#define button_ccw A3            // normally open button to ground for manual CCW rotation (schematic pin: A3)
+#define button_cw A5             // normally open button to ground for manual CW rotation
+#define button_ccw A4            // normally open button to ground for manual CCW rotation
 #define serial_led 0             // LED blinks when command is received on serial port (set to 0 to disable)
-#define rotator_analog_az A7     // reads analog azimuth voltage from rotator - pin 4 on Yaesu connector
+#define rotator_analog_az 0      // reads analog azimuth voltage from rotator - pin 4 on Yaesu connector (unused now - AZ position comes from pulse input, see FEATURE_AZ_POSITION_PULSE_INPUT below)
 #define azimuth_speed_voltage 0  // optional - PWM output for speed control voltage feed into rotator (on continually unlike rotate_cw_pwm and rotate_ccw_pwm)
 #define overlap_led 0            // line goes active when azimuth rotator is in overlap (> 360 rotators)
 #define brake_az 8               // goes high to disengage azimuth brake (set to 0 to disable)
@@ -77,7 +77,7 @@
 #endif //FEATURE_EL_POSITION_ROTARY_ENCODER
 
 #ifdef FEATURE_AZ_POSITION_PULSE_INPUT
-  #define az_position_pulse_pin 0                       // must be an interrupt capable pin!
+  #define az_position_pulse_pin 2                       // must be an interrupt capable pin!
   #define AZ_POSITION_PULSE_PIN_INTERRUPT 0             // Uno: pin 2 = interrupt 0, pin 3 = interrupt 1 ; Mega: pin 2 = interrupt 0, pin 3 = interrupt 1, pin 21 = interrupt 2, pin 20 = interrupt 3, pin 19 = interrupt 4, pin 18 = interrupt 5
 #endif                                                // read http://arduino.cc/en/Reference/AttachInterrupt for details on hardware and interrupts
 
@@ -96,7 +96,7 @@
 #define lcd_4_bit_d4_pin 5
 #define lcd_4_bit_d5_pin 4
 #define lcd_4_bit_d6_pin 3
-#define lcd_4_bit_d7_pin 2
+#define lcd_4_bit_d7_pin A2
 
 
 #ifdef FEATURE_JOYSTICK_CONTROL
