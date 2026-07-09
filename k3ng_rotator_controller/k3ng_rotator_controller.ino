@@ -1120,22 +1120,8 @@
 
 #include "rotator_hardware.h"
 
-#ifdef HARDWARE_WB6KCN_K3NG
-  #include "rotator_features_wb6kcn_k3ng.h"
-#endif
-#ifdef HARDWARE_WB6KCN
-  #include "rotator_features_wb6kcn.h"
-#endif
-#ifdef HARDWARE_M0UPU
-  #include "rotator_features_m0upu.h"
-#endif
-#ifdef HARDWARE_TEST
-  #include "rotator_features_test.h"
-#endif    
-#if !defined(HARDWARE_CUSTOM)
-  #include "rotator_features.h" 
-#endif      
-  
+#include "rotator_features.h"
+
 #include "rotator_dependencies.h"
 
 #ifdef FEATURE_4_BIT_LCD_DISPLAY
@@ -1242,45 +1228,14 @@
 
 #include "rotator.h"
 
-#ifdef HARDWARE_EA4TX_ARS_USB
-  #include "rotator_pins_ea4tx_ars_usb.h"
-#endif
-#ifdef HARDWARE_M0UPU
-  #include "rotator_pins_m0upu.h"
-#endif
-#ifdef HARDWARE_WB6KCN_K3NG
-  #include "rotator_pins_wb6kcn_k3ng.h"
-#endif
-#ifdef HARDWARE_WB6KCN
-  #include "rotator_pins_wb6kcn.h"
-#endif
-#ifdef HARDWARE_TEST
-  #include "rotator_pins_test.h"
-#endif
-#if !defined(HARDWARE_CUSTOM)
-  #include "rotator_pins.h"
-#endif
+#include "rotator_pins.h"
 
 #if defined(az_stepper_motor_direction) || defined(el_stepper_motor_direction)
   #error "az_stepper_motor_direction and el_stepper_motor_direction pins are not supported anymore.  Use rotate_* pins instead."
 #endif
 
 
-#ifdef HARDWARE_WB6KCN_K3NG
-  #include "rotator_settings_wb6kcn_k3ng.h"
-#endif
-#ifdef HARDWARE_WB6KCN
-  #include "rotator_settings_wb6kcn.h"
-#endif
-#ifdef HARDWARE_M0UPU
-  #include "rotator_settings_m0upu.h"
-#endif
-#ifdef HARDWARE_TEST
-  #include "rotator_settings_test.h"
-#endif      
-#if !defined(HARDWARE_CUSTOM)
-  #include "rotator_settings.h"
-#endif
+#include "rotator_settings.h"
 
 #ifdef FEATURE_STEPPER_MOTOR
   #ifdef OPTION_STEPPER_MOTOR_USE_TIMER_ONE_INSTEAD_OF_FIVE

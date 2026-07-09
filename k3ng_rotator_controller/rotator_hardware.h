@@ -1,16 +1,14 @@
 /* rotator_hardware.h
 
-   Uncomment defines below if you're specifically using any of this hardware and edit the appropriate special features, pins, and settings files
+   This fork targets a single board (RemoteQTH Rotator Interface v3.3) and does not use the alternate
+   HARDWARE_xxx selected rotator_features_<board>.h / rotator_pins_<board>.h / rotator_settings_<board>.h
+   mechanism upstream uses for other builders' boards - those alternate profile files were removed.
+   The default rotator_features.h/rotator_pins.h/rotator_settings.h are edited directly instead.
 
 */
 
 #if !defined(rotator_hardware_h)   // can't touch this
 #define rotator_hardware_h         // can't touch this
-
-// #define HARDWARE_M0UPU          // customize rotator_features_m0upu.h, rotators_pins_m0upu.h, rotator_settings_m0upu.h
-// #define HARDWARE_WB6KCN         // customize rotator_features_wb6kcn.h, rotators_pins_wb6kcn.h, rotator_settings_wb6kcn.h
-// #define HARDWARE_WB6KCN_K3NG         // K3NG test jig - do not use
-// #define HARDWARE_TEST         // K3NG test jig - do not use
 
 
 /* Serial port class definitions for various devices

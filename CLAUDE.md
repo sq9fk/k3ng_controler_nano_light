@@ -59,12 +59,14 @@ before adding/removing a `FEATURE_*` to understand what else it implies or confl
 - `rotator_pins.h` — which Arduino pin does what (only meaningful for the features enabled above)
 - `rotator_settings.h` — tunable values (timeouts, calibration tables, LCD geometry, rotation limits)
 
-The repo also ships alternate `rotator_features_<board>.h` / `rotator_pins_<board>.h` / `rotator_settings_<board>.h`
-triads (`_m0upu`, `_wb6kcn`, `_wb6kcn_k3ng`, `_test`) from upstream, selected via `HARDWARE_*` defines in
-`rotator_hardware.h`. **This fork does not use that mechanism** — since the whole repo targets one board, the *default*
-`rotator_features.h` / `rotator_pins.h` / `rotator_settings.h` were edited directly instead of adding a new
-`HARDWARE_REMOTEQTH_V33` variant. Keep doing it that way; don't introduce a parallel hardware profile for this single-board
-fork.
+Upstream ships alternate `rotator_features_<board>.h` / `rotator_pins_<board>.h` / `rotator_settings_<board>.h` triads
+(`_m0upu`, `_wb6kcn`, `_wb6kcn_k3ng`, `_test`) selected via `HARDWARE_*` defines in `rotator_hardware.h`. **This fork
+does not use that mechanism** and those alternate profile files (plus the orphan `rotator_pins_k3ng_g1000.h` /
+`rotator_pins_wb6kcn_az_test_setup.h`, never `#include`d by anything) were deleted as dead weight — since the whole
+repo targets one board, the *default* `rotator_features.h` / `rotator_pins.h` / `rotator_settings.h` were edited
+directly instead of adding a new `HARDWARE_REMOTEQTH_V33` variant. Keep doing it that way; don't introduce a parallel
+hardware profile for this single-board fork, and don't re-add alternate-board files pulled in by a future
+`git fetch upstream` merge — drop them again the same way.
 
 **Control flow:** `setup()` initializes serial, peripherals, EEPROM-stored settings, pins, display, encoders, interrupts.
 `loop()` is a flat sequence of `check_*()` / `service_*()` / `read_*()` calls gated by `#ifdef` (serial command parsing,
