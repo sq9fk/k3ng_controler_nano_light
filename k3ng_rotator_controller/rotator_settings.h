@@ -325,7 +325,11 @@ You can tweak these, but read the online documentation!
 #define PRESET_ENCODER_CHANGE_TIME_MS 2000 
 
 // FEATURE_AZ_ROTATION_STALL_DETECTION
-#define STALL_CHECK_FREQUENCY_MS_AZ 2000
+// 4 s rather than the upstream 2 s: the window has to comfortably outlast the rotor's
+// start-up ramp, otherwise a slow rotator that needs a moment to cover the first
+// STALL_CHECK_DEGREES_THRESHOLD_AZ degrees gets killed as a false stall every time it starts.
+// A real stall is a permanent condition, so detecting it 2 s later costs nothing.
+#define STALL_CHECK_FREQUENCY_MS_AZ 4000
 #define STALL_CHECK_DEGREES_THRESHOLD_AZ 2
 // FEATURE_EL_ROTATION_STALL_DETECTION
 #define STALL_CHECK_FREQUENCY_MS_EL 2000

@@ -80,7 +80,7 @@ LANGUAGE_ENGLISH
 | `AZ_POSITION_PULSE_DEBOUNCE` | 20 ms |
 | `AZIMUTH_TOLERANCE` | 3.0° |
 | `AZ_MANUAL_ROTATE_CCW_LIMIT` / `CW_LIMIT` | 182 / 628 (raw azimuth, 2° inside the mechanical stops) |
-| `STALL_CHECK_FREQUENCY_MS_AZ` / `_DEGREES_THRESHOLD_AZ` | 2000 ms / 2° |
+| `STALL_CHECK_FREQUENCY_MS_AZ` / `_DEGREES_THRESHOLD_AZ` | 4000 ms / 2° (window must outlast the rotor's start-up ramp) |
 | `AZ_BRAKE_DELAY` | 3000 ms |
 | `LCD_COLUMNS` × `LCD_ROWS` | 16 × 2, 1000 ms refresh |
 | `CONTROL_PORT_BAUD_RATE` | 9600 |
