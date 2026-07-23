@@ -66,8 +66,36 @@ OPTION_DISPLAY_STATUS                LCD row 1 status
 OPTION_DISPLAY_HEADING_AZ_ONLY       LCD row 1 heading
 OPTION_SAVE_MEMORY_EXCLUDE_EXTENDED_COMMANDS
 OPTION_SAVE_MEMORY_EXCLUDE_BACKSLASH_CMDS
+OPTION_LOCK_AZIMUTH_CONFIGURATION    fork-added, not in upstream (see below)
 LANGUAGE_ENGLISH
 ```
+
+## Serial command set
+
+GS-232B over the USB port, 9600 8N1. The memory-saving options above strip most of K3NG's command surface, so what
+actually answers is a short list:
+
+| Command | Action | Reply |
+|---|---|---|
+| `C` | report azimuth | `AZ=xxx` |
+| `C2` | report azimuth and elevation | `AZ=xxxEL=000` — the elevation is a dummy, there is no EL axis |
+| `M###` | rotate to azimuth (0–630 raw) | nothing on success, `?>` on a bad value |
+| `L` / `R` | rotate CCW / CW | — |
+| `A` | stop azimuth rotation | — |
+| `S` | stop everything | — |
+| `X1`–`X4` | speed change | `Speed X1`…`X4` — **accepted but inert**, this board has no PWM speed output wired |
+| `H` | help | nothing (`OPTION_SERIAL_HELP_TEXT` is off) |
+
+Everything else answers `?>`. Specifically not available: the elevation commands (`B`, `W`, `U`, `D`, `E`), the
+potentiometer calibration commands (`F`, `F2`, `O`, `O2`), the timed-buffer commands (`N`, `T`, multi-point `M`),
+`P36`/`P45` and `Z` (see `OPTION_LOCK_AZIMUTH_CONFIGURATION` below), all ~20 backslash commands (`\A`, `\I`, `\J`,
+`\E`, `\Q`, …) and all ~50 extended `\?XX` commands.
+
+**Rotational and configuration commands are silently ignored for the first 5 s after boot**
+(`ROTATIONAL_AND_CONFIGURATION_CMD_IGNORE_TIME_MS`, in effect because
+`OPTION_ALLOW_ROTATIONAL_AND_CONFIGURATION_CMDS_AT_BOOT_UP` is *disabled* — the option's name reads backwards). No
+error is returned, the command is just dropped. Opening the USB port resets the Nano, so a control program that
+sends a command immediately on connect will lose that first one.
 
 ### Key settings (`rotator_settings.h`)
 
@@ -118,8 +146,8 @@ behaves correctly on the physical board (GS-232 commands over serial, relay swit
 ### Flash and RAM budget
 
 The ATmega328P leaves very little headroom: a "stock" K3NG configuration with the LCD and preset encoder enabled
-**overflows flash by roughly 1.3 KB**. The current configuration builds at **16600 B flash (54.0 %) / 1053 B RAM
-(51.4 %)** — verified with PlatformIO Core 6.1.19 — headroom bought back by the two `OPTION_SAVE_MEMORY_EXCLUDE_*` switches (they strip rarely-used extended and `\`-prefixed serial
+**overflows flash by roughly 1.3 KB**. The current configuration builds at **16354 B flash (53.2 %) / 1049 B RAM
+(51.2 %)** — verified with PlatformIO Core 6.1.19 — headroom bought back by the two `OPTION_SAVE_MEMORY_EXCLUDE_*` switches (they strip rarely-used extended and `\`-prefixed serial
 commands; core GS-232 rotate/query commands are untouched) and by disabling every unused subsystem.
 
 **After enabling any new `FEATURE_*`, run `pio run` and check the reported usage before considering the change
@@ -152,7 +180,13 @@ update them, and button/loop changes from upstream may conflict.
    enable those, the two extra pairs were removed; the pair at the top of `loop()` and the `read_headings()` that
    feeds `check_buttons()` / `check_overlap()` / `check_brake_release()` remain. If one of those blocks is ever
    enabled, put an equivalent pair back around it.
-4. **Alternate hardware profiles removed.** Upstream's `rotator_*_<board>.h` triads (`_m0upu`, `_wb6kcn`,
+4. **`OPTION_LOCK_AZIMUTH_CONFIGURATION` (new option).** GS-232B's `P36`/`P45` set the rotation capability and `Z`
+   toggles the starting point between north- and south-centre. On this rotator both are destructive: the 180°
+   starting point and 450° capability are the basis for the jog limits, the pulse hard limit and the preset encoder,
+   and a logging program that issues `P36` on connect would desync all three until the next reset. Since `\I` and
+   `\J` — the proper way to change those values — are stripped anyway, the two cases are now compiled out and answer
+   `?>`. Saves 246 B flash.
+5. **Alternate hardware profiles removed.** Upstream's `rotator_*_<board>.h` triads (`_m0upu`, `_wb6kcn`,
    `_wb6kcn_k3ng`, `_test`) and two orphan pin files were deleted, and the `HARDWARE_*` selection mechanism in
    `rotator_hardware.h` is not used. The default `rotator_features.h` / `rotator_pins.h` / `rotator_settings.h`
    are edited directly. Keep it that way, and drop those files again if a future upstream merge reintroduces them.

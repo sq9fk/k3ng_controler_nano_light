@@ -145,6 +145,17 @@ already properly optimized — a pending/live double-buffer, rate-limited to `LC
 per-character and only writing cells that actually changed — so this redundant-heading-option bug was the only real LCD
 issue, not the update mechanism.
 
+### Fork-added code: `OPTION_LOCK_AZIMUTH_CONFIGURATION`
+
+`rotator_features.h` defines this fork-only option; the `.ino` consumes it in `process_yaesu_command()`, where the
+`#ifdef OPTION_GS_232B_EMULATION` guarding the `P` and `Z` cases became
+`#if defined(OPTION_GS_232B_EMULATION) && !defined(OPTION_LOCK_AZIMUTH_CONFIGURATION)`. `P36`/`P45` write
+`configuration.azimuth_rotation_capability` and `Z` flips `configuration.azimuth_starting_point` — on this board
+those two values (180 / 450) are what the jog limits, `OPTION_AZ_POSITION_PULSE_HARD_LIMIT` and the preset encoder
+all derive from, so a stray `P36` from a logging program desyncs the lot until the next reset. Both now fall through
+to the `default:` case and answer `?>`. Saves 246 B flash. Doesn't exist upstream, so upstream merges won't touch it
+— but they may touch the surrounding cases, so re-check the guard after a merge.
+
 ### `OPTION_EXTERNAL_ANALOG_REFERENCE` is off, and that is deliberate
 
 Upstream (and an earlier revision of these notes) treats it as mandatory for the RemoteQTH board. It isn't, because
@@ -172,7 +183,7 @@ pin, check whether its call sites actually guard against `0`.
 
 The ATmega328P old-bootloader Nano has only **30720 B flash / 2048 B RAM**, and this codebase is large. With
 `FEATURE_4_BIT_LCD_DISPLAY` + `FEATURE_AZ_PRESET_ENCODER` both on, a "stock" build overflows flash by ~1.3 KB. Two
-things bought back headroom (currently 16600 B / 54.0% flash, 1053 B / 51.4% RAM, PlatformIO Core 6.1.19):
+things bought back headroom (currently 16354 B / 53.2% flash, 1049 B / 51.2% RAM, PlatformIO Core 6.1.19):
 
 1. `OPTION_SAVE_MEMORY_EXCLUDE_EXTENDED_COMMANDS` and `OPTION_SAVE_MEMORY_EXCLUDE_BACKSLASH_CMDS` in
    `rotator_features.h` — K3NG's own built-in size-reduction switches. They strip a large block of rarely-used

@@ -18564,7 +18564,7 @@ void process_yaesu_command(byte * yaesu_command_buffer, int yaesu_command_buffer
         
         break;
         
-      #ifdef OPTION_GS_232B_EMULATION
+      #if defined(OPTION_GS_232B_EMULATION) && !defined(OPTION_LOCK_AZIMUTH_CONFIGURATION)
         case 'P':  // P - switch between 360 and 450 degree mode
           #if defined(OPTION_ALLOW_ROTATIONAL_AND_CONFIGURATION_CMDS_AT_BOOT_UP)
             if ((yaesu_command_buffer[1] == '3') && (yaesu_command_buffer_index > 2)) {  // P36 command
@@ -18624,8 +18624,8 @@ void process_yaesu_command(byte * yaesu_command_buffer, int yaesu_command_buffer
           #endif
 
           break;
-        #endif
-        
+        #endif //defined(OPTION_GS_232B_EMULATION) && !defined(OPTION_LOCK_AZIMUTH_CONFIGURATION)
+
       default:
         strcpy_P(return_string,(const char*) F("?>"));
         #ifdef DEBUG_PROCESS_YAESU

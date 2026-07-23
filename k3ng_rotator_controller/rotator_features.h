@@ -115,6 +115,7 @@
 
 /* less often used features and options */
 #define OPTION_GS_232B_EMULATION          // comment this out to default to Yaesu GS-232A emulation when using FEATURE_YAESU_EMULATION above
+#define OPTION_LOCK_AZIMUTH_CONFIGURATION // fork-added (not upstream): drops the GS-232B P36/P45 (rotation capability) and Z (starting point) commands, which would otherwise let any logging program overwrite this rotator's 180-degree starting point / 450-degree capability at runtime and desync the jog limits, pulse hard limit and preset encoder. They now answer ?> like any unknown command.
 // #define FEATURE_ROTATION_INDICATOR_PIN     // activate rotation_indication_pin to indicate rotation
 // #define FEATURE_LIMIT_SENSE
 // #define FEATURE_TIMED_BUFFER           // Support for Yaesu timed buffer commands
