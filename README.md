@@ -39,7 +39,7 @@ Upstream's general project description, protocol documentation and feature list 
 | Rotation stall indicator | D13 | onboard Nano LED, no external wiring; goes high when a stall is detected |
 | LCD RS / E | D12 / D11 | |
 | LCD D4 / D5 / D6 / D7 | D5 / D4 / D3 / **A2** | LCD D7 moved off D2 to free D2 for the position pulse input |
-| AREF | external | supplied by the board through R9 |
+| AREF | external | supplied by the board through R9; no software setting needed, see below |
 
 Unused K3NG outputs (PWM speed control, speed/preset pots, overlap LED, serial LED, stop button) are set to `0`
 (disabled) in `rotator_pins.h`.
@@ -58,7 +58,6 @@ OPTION_ENCODER_HALF_STEP_MODE
 OPTION_ENCODER_ENABLE_PULLUPS
 OPTION_POSITION_PULSE_INPUT_PULLUPS  required: a dry contact leaves D2 floating without it
 OPTION_AZ_POSITION_PULSE_HARD_LIMIT  required for 450 deg (see below)
-OPTION_EXTERNAL_ANALOG_REFERENCE     required: the board wires its own reference to AREF
 OPTION_AZ_PULSE_DEBOUNCE             fork-added, not in upstream (see below)
 OPTION_AZ_MANUAL_ROTATE_LIMITS       jog buttons stop at the software end stops
 FEATURE_AZ_ROTATION_STALL_DETECTION  cuts the motor if position stops changing mid-rotation
@@ -167,9 +166,14 @@ This codebase has no single rotation-capability switch — several subsystems ha
   tracking as soon as the rotor enters the overlap zone.
 - `OPTION_PRESET_ENCODER_0_360_DEGREES` must stay **disabled**. Enabled, it clamps the preset knob at a hardcoded
   360°, making the 360–450° overlap zone unreachable from the front panel.
-- `OPTION_EXTERNAL_ANALOG_REFERENCE` must stay **enabled** regardless of which position sensor is active — the
-  board wires its own reference to AREF, and switching to the internal reference with an external one connected
-  risks damaging the chip.
+- `OPTION_EXTERNAL_ANALOG_REFERENCE` is **disabled**, and that is correct here — but only because this build never
+  performs an analog read. `analogReference(EXTERNAL)` sits inside `analogReadEnhanced()` rather than `setup()`, and
+  every caller is either in a disabled feature or behind an `if (pin)` guard on a pin set to `0`. With no
+  `analogRead()` ever executed, `ADMUX` stays at its reset default (`REFS=00`, i.e. the AREF pin with the internal
+  reference off) — already the right state for the board's own reference. **If you ever enable a feature that reads
+  an analog pin** (position potentiometer, speed pot, preset pot, joystick), re-enable this option in the same
+  change: the first `analogRead()` would otherwise apply whatever reference the Arduino core defaults to and connect
+  AVCC internally to the AREF pin, which is being driven externally.
 - `OPTION_DISPLAY_HEADING` must stay **disabled**, with only `OPTION_DISPLAY_HEADING_AZ_ONLY` on. With elevation
   off, the generic option also prints the azimuth heading (to row 2), duplicating row 1 and wasting the second LCD
   row. Both were enabled at once by upstream default; that was fixed.

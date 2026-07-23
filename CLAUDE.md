@@ -95,7 +95,7 @@ doubt, physical wiring as reported by whoever has the board in hand wins over th
 | CCW relay | D7 | via R2→Q2→RL2 |
 | Brake relay | D8 | via R1→Q1→RL3 |
 | Azimuth position | pulse input, D2 (INT0) | rotor position sensor is a reed switch/"contactron" (dry contact), not analog voltage — `FEATURE_AZ_POSITION_PULSE_INPUT`; calibrate `AZ_POSITION_PULSE_DEG_PER_PULSE` in `rotator_settings.h` against the actual rotor spec; `OPTION_POSITION_PULSE_INPUT_PULLUPS` must stay enabled since a dry contact needs the internal pull-up or D2 floats between pulses |
-| AREF | external | board supplies its own reference through R9, independent of which position-sensor feature is active — keep `OPTION_EXTERNAL_ANALOG_REFERENCE` enabled regardless, since switching to the internal reference while an external one is wired to AREF risks damaging the chip |
+| AREF | external | board supplies its own reference through R9. `OPTION_EXTERNAL_ANALOG_REFERENCE` is **disabled** and needs to stay that way only as long as nothing reads an analog pin — see below |
 | Manual CW/CCW jog buttons | CW=A5, CCW=A4 | moved off A2/A3 to free A2 for LCD D7 |
 | LCD (16x2, 4-bit) | RS=D12, E=D11, D4=D5, D5=D4, D6=D3, D7=A2 | D7 moved off D2 to free D2 for the azimuth pulse input above |
 | AZ preset rotary encoder | D10 / D9 | |
@@ -144,6 +144,20 @@ row 2 showed a redundant copy of row 1 instead of being free. The LCD buffering 
 already properly optimized — a pending/live double-buffer, rate-limited to `LCD_UPDATE_TIME`, with `update()` diffing
 per-character and only writing cells that actually changed — so this redundant-heading-option bug was the only real LCD
 issue, not the update mechanism.
+
+### `OPTION_EXTERNAL_ANALOG_REFERENCE` is off, and that is deliberate
+
+Upstream (and an earlier revision of these notes) treats it as mandatory for the RemoteQTH board. It isn't, because
+`analogReference(EXTERNAL)` is called from inside `analogReadEnhanced()`, not `setup()` — and this configuration
+never reaches it. Every `analogReadEnhanced()` call site is either inside a feature that's compiled out
+(`FEATURE_AZ_POSITION_POTENTIOMETER`, elevation, joystick, `FEATURE_ANCILLARY_PIN_CONTROL`) or behind an
+`if (az_speed_pot)` / `if (az_preset_pot)` guard, and both of those pins are `0`. The function is dead code — removing
+the option changed the binary size by exactly 0 bytes. With no `analogRead()` ever executed, `ADMUX` keeps its reset
+default of `REFS=00` (AREF pin, internal reference disconnected), which is the correct state for an externally driven
+AREF anyway.
+
+**Re-enable it in the same change if you ever turn on a feature that reads an analog pin.** At that point the first
+`analogRead()` applies the core's default reference, which ties AVCC to the externally driven AREF pin.
 
 ### Pin `0` does not mean "disabled" for every feature
 

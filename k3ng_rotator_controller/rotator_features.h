@@ -162,7 +162,7 @@
 // #define OPTION_REVERSE_EL_HH12_AS5045
 
 // #define FEATURE_POWER_SWITCH
-#define OPTION_EXTERNAL_ANALOG_REFERENCE  //Activate external analog voltage reference (needed for RemoteQTH.com unit)
+// #define OPTION_EXTERNAL_ANALOG_REFERENCE  // disabled: dead code in this build. The analogReference(EXTERNAL) call lives inside analogReadEnhanced(), not setup(), and this configuration never performs an analog read - every call site is either in a disabled feature or behind an "if (pin)" guard on a pin set to 0. With no analogRead() ever executed, ADMUX keeps its reset default (REFS=00 = AREF pin, internal reference off), which is already the correct and safe state for the board's own reference on AREF.
 // #define OPTION_SYNC_MASTER_CLOCK_TO_SLAVE        // use when GPS unit is connected to slave unit and you want to synchronize the master unit clock to the slave unit GPS clock
 // #define OPTION_SYNC_MASTER_COORDINATES_TO_SLAVE  // use when GPS unit is connected to slave unit and you want to synchronize the master unit coordinates to the slave unit GPS
 // #define OPTION_DISABLE_HMC5883L_ERROR_CHECKING
