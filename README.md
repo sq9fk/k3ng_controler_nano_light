@@ -13,6 +13,9 @@ does not have the flash to carry them.
 Upstream's general project description, protocol documentation and feature list still apply and live in the
 [K3NG wiki](https://github.com/k3ng/k3ng_rotator_controller/wiki).
 
+A companion project, [sq9fk/rotator_wifi_bridge](https://github.com/sq9fk/rotator_wifi_bridge), puts this controller
+on the network over rotctld, a raw GS-232 socket and a web panel. The `I` and `D` commands below were added for it.
+
 ## Hardware
 
 | Item | Value |

@@ -11,6 +11,12 @@ rotator. It's a single Arduino firmware project, not a library — there is no s
 - `origin` → `sq9fk/k3ng_controler_nano_light` (this fork)
 - `upstream` → `k3ng/k3ng_rotator_controller` (the original project; pull from here to get upstream fixes)
 
+A companion project, [sq9fk/rotator_wifi_bridge](https://github.com/sq9fk/rotator_wifi_bridge) (ESP32-S3), drives
+this controller over its serial port and exposes it as rotctld, a raw GS-232 socket and a web panel. The fork-added
+`I` and `D` commands exist for it, and its `Config` mirrors `AZIMUTH_STARTING_POINT` /
+`AZIMUTH_ROTATION_CAPABILITY` — **change them here and they must change there too**, since the bridge uses them to
+decide which way to turn.
+
 ## Build / flash / monitor
 
 PlatformIO is the primary toolchain for this fork (`platformio.ini` at repo root, targeting the `nanoatmega328` board —
