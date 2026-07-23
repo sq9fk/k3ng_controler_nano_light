@@ -2,7 +2,7 @@
 
 A trimmed-down fork of the [K3NG Arduino rotator controller](https://github.com/k3ng/k3ng_rotator_controller),
 configured for exactly one hardware setup: a **RemoteQTH Rotator Interface v3.3** board (Arduino Nano, ATmega328P,
-old bootloader) driving an **azimuth-only, 450°-capable** rotator whose position sensor is a **reed switch /
+old bootloader) driving an **azimuth-only, 405°-capable** rotator whose position sensor is a **reed switch /
 contactron pulse output**.
 
 This is not a general-purpose build. Every optional K3NG subsystem that this board does not use (elevation, GPS,
@@ -20,7 +20,7 @@ Upstream's general project description, protocol documentation and feature list 
 | Board | RemoteQTH Rotator Interface v3.3 (OK1HRA), Arduino Nano ATmega328P, old bootloader |
 | Flash / RAM | 30720 B / 2048 B |
 | Axes | Azimuth only (`FEATURE_ELEVATION_CONTROL` off) |
-| Rotator | 450° rotation capability, starting point 180° |
+| Rotator | 405° rotation capability (360 + 45° overlap), starting point 180° |
 | Position sensor | Pulse input (dry contact reed switch), 0.5° per pulse |
 | Display | 16×2 HD44780 LCD, 4-bit parallel |
 | Controls | Manual CW/CCW jog buttons + rotary encoder for azimuth preset |
@@ -57,7 +57,7 @@ FEATURE_AZ_PRESET_ENCODER            front-panel preset knob
 OPTION_ENCODER_HALF_STEP_MODE
 OPTION_ENCODER_ENABLE_PULLUPS
 OPTION_POSITION_PULSE_INPUT_PULLUPS  required: a dry contact leaves D2 floating without it
-OPTION_AZ_POSITION_PULSE_HARD_LIMIT  required for 450 deg (see below)
+OPTION_AZ_POSITION_PULSE_HARD_LIMIT  required past 360 deg (see below)
 OPTION_AZ_PULSE_DEBOUNCE             fork-added, not in upstream (see below)
 OPTION_AZ_MANUAL_ROTATE_LIMITS       jog buttons stop at the software end stops
 FEATURE_AZ_ROTATION_STALL_DETECTION  cuts the motor if position stops changing mid-rotation
@@ -79,12 +79,12 @@ actually answers is a short list:
 |---|---|---|
 | `C` | report azimuth (real, 0–359 — see `I` for raw) | `AZ=xxx` |
 | `C2` | report azimuth and elevation | `AZ=xxxEL=000` — the elevation is a dummy, there is no EL axis |
-| `M###` | rotate to azimuth (0–630 raw) | nothing on success, `?>` on a bad value |
+| `M###` | rotate to azimuth (0–585 raw) | nothing on success, `?>` on a bad value |
 | `L` / `R` | rotate CCW / CW | — |
 | `A` | stop azimuth rotation | — |
 | `S` | stop everything | — |
 | `X1`–`X4` | speed change | `Speed X1`…`X4` — **accepted but inert**, this board has no PWM speed output wired |
-| `I` | report **raw** azimuth (180–630) | `RAW=370` |
+| `I` | report **raw** azimuth (180–585) | `RAW=370` |
 | `Ixxx` | declare the rotator's true raw position and save to EEPROM | `RAW=370`, or `Wait` inside the post-boot lockout |
 | `D` | report degrees per position pulse | `DPP=0.500` |
 | `Dxxxx` | set degrees per pulse to `xxxx`/1000 and save to EEPROM immediately | `DPP=0.500`, or `Wait` inside the post-boot lockout |
@@ -106,11 +106,11 @@ sends a command immediately on connect will lose that first one.
 | Setting | Value |
 |---|---|
 | `AZIMUTH_STARTING_POINT_EEPROM_INITIALIZE` | 180 |
-| `AZIMUTH_ROTATION_CAPABILITY_EEPROM_INITIALIZE` | 450 |
+| `AZIMUTH_ROTATION_CAPABILITY_EEPROM_INITIALIZE` | 405 |
 | `AZ_POSITION_PULSE_DEG_PER_PULSE` | 0.5 — EEPROM seed only; the live value is calibrated with the `D` command |
 | `AZ_POSITION_PULSE_DEBOUNCE` | 20 ms |
 | `AZIMUTH_TOLERANCE` | 3.0° |
-| `AZ_MANUAL_ROTATE_CCW_LIMIT` / `CW_LIMIT` | 182 / 628 (raw azimuth, 2° inside the mechanical stops) |
+| `AZ_MANUAL_ROTATE_CCW_LIMIT` / `CW_LIMIT` | 182 / 583 (raw azimuth, 2° inside the mechanical stops) |
 | `STALL_CHECK_FREQUENCY_MS_AZ` / `_DEGREES_THRESHOLD_AZ` | 4000 ms / 2° (window must outlast the rotor's start-up ramp) |
 | `AZ_BRAKE_DELAY` | 3000 ms |
 | `LCD_COLUMNS` × `LCD_ROWS` | 16 × 2, 1000 ms refresh |
@@ -201,7 +201,7 @@ update them, and button/loop changes from upstream may conflict.
    `raw_azimuth` and `last_azimuth` only, so on a pulse-input rotator its effect is undone by the next pulse.
 6. **`OPTION_LOCK_AZIMUTH_CONFIGURATION` (new option).** GS-232B's `P36`/`P45` set the rotation capability and `Z`
    toggles the starting point between north- and south-centre. On this rotator both are destructive: the 180°
-   starting point and 450° capability are the basis for the jog limits, the pulse hard limit and the preset encoder,
+   starting point and 405° capability are the basis for the jog limits, the pulse hard limit and the preset encoder,
    and a logging program that issues `P36` on connect would desync all three until the next reset. Since `\I` and
    `\J` — the proper way to change those values — are stripped anyway, the two cases are now compiled out and answer
    `?>`. Saves 246 B flash.
@@ -216,13 +216,13 @@ update them, and button/loop changes from upstream may conflict.
 
 ## Things that must not be "fixed"
 
-This codebase has no single rotation-capability switch — several subsystems hardcode 360°. For a 450° rotator:
+This codebase has no single rotation-capability switch — several subsystems hardcode 360°. For this 405° rotator:
 
 - `OPTION_AZ_POSITION_PULSE_HARD_LIMIT` must stay **enabled**. Without it the pulse-counted azimuth wraps at a
   hardcoded 360° instead of clamping at `azimuth_starting_point + azimuth_rotation_capability`, corrupting position
   tracking as soon as the rotor enters the overlap zone.
 - `OPTION_PRESET_ENCODER_0_360_DEGREES` must stay **disabled**. Enabled, it clamps the preset knob at a hardcoded
-  360°, making the 360–450° overlap zone unreachable from the front panel.
+  360°, making the 360–405° overlap zone unreachable from the front panel.
 - `OPTION_EXTERNAL_ANALOG_REFERENCE` is **disabled**, and that is correct here — but only because this build never
   performs an analog read. `analogReference(EXTERNAL)` sits inside `analogReadEnhanced()` rather than `setup()`, and
   every caller is either in a disabled feature or behind an `if (pin)` guard on a pin set to `0`. With no

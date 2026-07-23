@@ -2,7 +2,11 @@
 /* -------------------------- rotation settings ---------------------------------------*/
 
 #define AZIMUTH_STARTING_POINT_EEPROM_INITIALIZE 180      // the starting point in degrees of the azimuthal rotator - only used for initializing EEPROM the first time the code is run                                               
-#define AZIMUTH_ROTATION_CAPABILITY_EEPROM_INITIALIZE 450 // the default rotation capability of the rotator in degrees - only used for initializing EEPROM the first time the code is run
+// 405, not 450: the rotator's full-CCW stop sits at bearing 180 and it carries
+// 45 degrees of overlap, so it sweeps 180 -> 585 raw (bearing 225). The
+// doubly-reachable band is therefore 180..225. A capability of 450 would let
+// the controller drive 45 degrees past the mechanical stop.
+#define AZIMUTH_ROTATION_CAPABILITY_EEPROM_INITIALIZE 405 // the default rotation capability of the rotator in degrees - only used for initializing EEPROM the first time the code is run
 
 /* 
 
@@ -85,12 +89,12 @@ You can tweak these, but read the online documentation!
 #define EL_VARIABLE_FREQ_OUTPUT_HIGH 1000   // Frequency in hertz of maximum speed (FEATURE_STEPPER_MOTOR maximum value: 2000 unless you change OPTION_STEPPER_MOTOR_MAX_X_KHZ in features file)
 
 // Settings for OPTION_AZ_MANUAL_ROTATE_LIMITS
-// Compared against raw_azimuth, which on this rotator runs 180 (full CCW) to 630 (full CW):
-// starting point 180 + 450 degrees capability. The upstream defaults of 0/535 are wrong here -
-// 0 is unreachable and 535 would stop the CW jog 95 degrees short of the real mechanical end.
+// Compared against raw_azimuth, which on this rotator runs 180 (full CCW) to 585 (full CW):
+// starting point 180 + 405 degrees capability. The upstream defaults of 0/535 are wrong here -
+// 0 is unreachable and 535 would stop the CW jog 50 degrees short of the real mechanical end.
 // 2 degrees of margin at each end so the motor is cut before the rotor slams into its stop.
 #define AZ_MANUAL_ROTATE_CCW_LIMIT 182
-#define AZ_MANUAL_ROTATE_CW_LIMIT 628
+#define AZ_MANUAL_ROTATE_CW_LIMIT 583
 
 // Settings for OPTION_EL_MANUAL_ROTATE_LIMITS
 #define EL_MANUAL_ROTATE_DOWN_LIMIT -1
@@ -106,7 +110,7 @@ You can tweak these, but read the online documentation!
 #define AZ_PRESET_POT_FULL_CW 0
 #define AZ_PRESET_POT_FULL_CCW 1023
 #define AZ_PRESET_POT_FULL_CW_MAP 180         // azimuth pot fully counter-clockwise degrees
-#define AZ_PRESET_POT_FULL_CCW_MAP 630        // azimuth pot fully clockwise degrees
+#define AZ_PRESET_POT_FULL_CCW_MAP 585        // azimuth pot fully clockwise degrees
 
 #define ENCODER_PRESET_TIMEOUT 5000
 
@@ -265,8 +269,8 @@ You can tweak these, but read the online documentation!
  *
  */
 
-#define AZIMUTH_CALIBRATION_FROM_ARRAY {180,630}            /* these are in "raw" degrees, i.e. when going east past 360 degrees, add 360 degrees*/
-#define AZIMUTH_CALIBRATION_TO_ARRAY {180,630}
+#define AZIMUTH_CALIBRATION_FROM_ARRAY {180,585}            /* these are in "raw" degrees, i.e. when going east past 360 degrees, add 360 degrees*/
+#define AZIMUTH_CALIBRATION_TO_ARRAY {180,585}
 
 // example: reverse rotation sensing
 //   #define AZIMUTH_CALIBRATION_FROM_ARRAY {0,359}

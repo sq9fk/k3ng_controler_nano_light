@@ -100,15 +100,19 @@ doubt, physical wiring as reported by whoever has the board in hand wins over th
 | LCD (16x2, 4-bit) | RS=D12, E=D11, D4=D5, D5=D4, D6=D3, D7=A2 | D7 moved off D2 to free D2 for the azimuth pulse input above |
 | AZ preset rotary encoder | D10 / D9 | |
 
-The board is azimuth-only (`FEATURE_ELEVATION_CONTROL` stays off) and assumes a 450°-capable rotator
-(`AZIMUTH_ROTATION_CAPABILITY_EEPROM_INITIALIZE`). Two things that must stay consistent with that 450° figure, because
+The board is azimuth-only (`FEATURE_ELEVATION_CONTROL` stays off). The rotator's full-CCW mechanical stop sits at
+bearing **180°** and it carries **45° of overlap**, so `AZIMUTH_ROTATION_CAPABILITY_EEPROM_INITIALIZE` is **405**
+(360 + 45) and raw azimuth runs **180…585**. Reported by the owner, and it supersedes the 450 this fork carried
+earlier — 450 would have let the controller drive 45° past the mechanical stop. The band of bearings reachable two
+different ways is the intersection of what each lap covers: raw 180–359 gives bearings 180–359, raw 360–585 gives
+0–225, so **180–225** is the ambiguous 45°. Two things must stay consistent with the 405 figure, because
 this codebase has no single "rotation capability" switch — every subsystem that handles the azimuth range does its own
 thing, and several default to a hardcoded 360°:
 - `OPTION_AZ_POSITION_PULSE_HARD_LIMIT` must stay **enabled** — without it, the pulse-counted azimuth wraps at a
-  hardcoded 360° instead of clamping at `azimuth_starting_point + azimuth_rotation_capability` (450°), corrupting
+  hardcoded 360° instead of clamping at `azimuth_starting_point + azimuth_rotation_capability` (585 raw), corrupting
   position tracking once the rotor swings into the overlap zone.
 - `OPTION_PRESET_ENCODER_0_360_DEGREES` must stay **disabled** — enabled, it clamps the front-panel preset knob at a
-  hardcoded 360°, making the 360°-450° overlap zone unreachable via the encoder.
+  hardcoded 360°, making the overlap zone unreachable via the encoder.
 
 ### Fork-added code: AZ pulse debounce (not upstream)
 
@@ -192,7 +196,7 @@ The write is bracketed by `noInterrupts()`/`interrupts()` since the ISR writes t
 `#ifdef OPTION_GS_232B_EMULATION` guarding the `P` and `Z` cases became
 `#if defined(OPTION_GS_232B_EMULATION) && !defined(OPTION_LOCK_AZIMUTH_CONFIGURATION)`. `P36`/`P45` write
 `configuration.azimuth_rotation_capability` and `Z` flips `configuration.azimuth_starting_point` — on this board
-those two values (180 / 450) are what the jog limits, `OPTION_AZ_POSITION_PULSE_HARD_LIMIT` and the preset encoder
+those two values (180 / 405) are what the jog limits, `OPTION_AZ_POSITION_PULSE_HARD_LIMIT` and the preset encoder
 all derive from, so a stray `P36` from a logging program desyncs the lot until the next reset. Both now fall through
 to the `default:` case and answer `?>`. Saves 246 B flash. Doesn't exist upstream, so upstream merges won't touch it
 — but they may touch the surrounding cases, so re-check the guard after a merge.
