@@ -1,5 +1,5 @@
 /*---------------------- macros - don't touch these unless you know what you are doing ---------------------*/
-#define CONFIGURATION_STRUCT_VERSION 123
+#define CONFIGURATION_STRUCT_VERSION 124  // bumped from upstream's 123 by this fork: config_t gained az_position_pulse_deg_per_pulse, so a stored 123 struct must not be read back
 
 #define AZ 1
 #define EL 2

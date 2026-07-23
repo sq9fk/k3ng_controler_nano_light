@@ -1324,7 +1324,10 @@ struct config_t {
   unsigned int autopark_time_minutes;
   byte azimuth_display_mode;
   int park_azimuth;
-  int park_elevation;  
+  int park_elevation;
+  #if defined(FEATURE_AZ_POSITION_PULSE_INPUT)
+    float az_position_pulse_deg_per_pulse;   // fork-added: runtime-calibratable, seeded from AZ_POSITION_PULSE_DEG_PER_PULSE
+  #endif
   #if defined(FEATURE_STEPPER_MOTOR)
     byte az_stepper_motor_last_pin_state;
     byte el_stepper_motor_last_pin_state;
@@ -7356,7 +7359,9 @@ void initialize_eeprom_with_defaults(){
   configuration.autopark_active = 0;
   configuration.autopark_time_minutes = 0;
   configuration.azimuth_display_mode = AZ_DISPLAY_MODE_NORMAL;
-  
+  #if defined(FEATURE_AZ_POSITION_PULSE_INPUT)
+    configuration.az_position_pulse_deg_per_pulse = AZ_POSITION_PULSE_DEG_PER_PULSE;
+  #endif
 
   #if defined(FEATURE_MOON_TRACKING) || defined(FEATURE_SUN_TRACKING)
     configuration.tracking_sun_check_frequency_ms = SUN_TRACKING_CHECK_INTERVAL;
@@ -12581,19 +12586,19 @@ void az_position_pulse_interrupt_handler(){
   #ifdef OPTION_AZ_PULSE_DEBOUNCE //---------------------------------------------
   if ((millis()-last_az_pulse_debounce) > AZ_POSITION_PULSE_DEBOUNCE) {
     if (current_az_state() == ROTATING_CW) {
-      az_position_pulse_input_azimuth += (float)AZ_POSITION_PULSE_DEG_PER_PULSE;
+      az_position_pulse_input_azimuth += configuration.az_position_pulse_deg_per_pulse;
       last_known_az_state = ROTATING_CW;
     } else {
       if (current_az_state() == ROTATING_CCW) {
-        az_position_pulse_input_azimuth -= (float)AZ_POSITION_PULSE_DEG_PER_PULSE;
+        az_position_pulse_input_azimuth -= configuration.az_position_pulse_deg_per_pulse;
         last_known_az_state = ROTATING_CCW;
       } else {
         #ifndef OPTION_PULSE_IGNORE_AMBIGUOUS_PULSES
         if (last_known_az_state == ROTATING_CW) {
-          az_position_pulse_input_azimuth += (float)AZ_POSITION_PULSE_DEG_PER_PULSE;
+          az_position_pulse_input_azimuth += configuration.az_position_pulse_deg_per_pulse;
         } else {
           if (last_known_az_state == ROTATING_CCW) {
-            az_position_pulse_input_azimuth -= (float)AZ_POSITION_PULSE_DEG_PER_PULSE;
+            az_position_pulse_input_azimuth -= configuration.az_position_pulse_deg_per_pulse;
           }
         }
         #endif // OPTION_PULSE_IGNORE_AMBIGUOUS_PULSES
@@ -12608,19 +12613,19 @@ void az_position_pulse_interrupt_handler(){
   #else //OPTION_AZ_PULSE_DEBOUNCE -----------------------
 
   if (current_az_state() == ROTATING_CW) {
-    az_position_pulse_input_azimuth += (float)AZ_POSITION_PULSE_DEG_PER_PULSE;
+    az_position_pulse_input_azimuth += configuration.az_position_pulse_deg_per_pulse;
     last_known_az_state = ROTATING_CW;
   } else {
     if (current_az_state() == ROTATING_CCW) {
-      az_position_pulse_input_azimuth -= (float)AZ_POSITION_PULSE_DEG_PER_PULSE;
+      az_position_pulse_input_azimuth -= configuration.az_position_pulse_deg_per_pulse;
       last_known_az_state = ROTATING_CCW;
     } else {
           #ifndef OPTION_PULSE_IGNORE_AMBIGUOUS_PULSES
       if (last_known_az_state == ROTATING_CW) {
-        az_position_pulse_input_azimuth += (float)AZ_POSITION_PULSE_DEG_PER_PULSE;
+        az_position_pulse_input_azimuth += configuration.az_position_pulse_deg_per_pulse;
       } else {
         if (last_known_az_state == ROTATING_CCW) {
-          az_position_pulse_input_azimuth -= (float)AZ_POSITION_PULSE_DEG_PER_PULSE;
+          az_position_pulse_input_azimuth -= configuration.az_position_pulse_deg_per_pulse;
         }
       }
             #endif // OPTION_PULSE_IGNORE_AMBIGUOUS_PULSES
@@ -18039,7 +18044,43 @@ void process_yaesu_command(byte * yaesu_command_buffer, int yaesu_command_buffer
         
         
         //-----------------end of C command-----------------
-        
+
+      #if defined(FEATURE_AZ_POSITION_PULSE_INPUT)
+        case 'D':  // fork-added: D - query degrees per position pulse, Dxxxx - set it to xxxx/1000 degrees and save to EEPROM
+          if (yaesu_command_buffer_index == 1) {                       // bare D - report the current value
+            strcpy(return_string,"DPP=");
+            dtostrf(configuration.az_position_pulse_deg_per_pulse,0,3,tempstring);
+            strcat(return_string,tempstring);
+            break;
+          }
+          if (yaesu_command_buffer_index == 5) {                       // Dxxxx - set
+            parsed_value = 0;
+            for (byte d = 1; d < 5; d++) {
+              if ((yaesu_command_buffer[d] < '0') || (yaesu_command_buffer[d] > '9')) {
+                parsed_value = -1;
+                break;
+              }
+              parsed_value = (parsed_value * 10) + (yaesu_command_buffer[d] - 48);
+            }
+            if (parsed_value > 0) {                                   // 0.001 to 9.999 degrees per pulse
+              if (millis() > ROTATIONAL_AND_CONFIGURATION_CMD_IGNORE_TIME_MS) {
+                noInterrupts();                                       // az_position_pulse_interrupt_handler() reads this float; a 4-byte store is not atomic on AVR
+                configuration.az_position_pulse_deg_per_pulse = (float)parsed_value / 1000.0;
+                interrupts();
+                write_settings_to_eeprom();                           // saved immediately, as configured
+                strcpy(return_string,"DPP=");
+                dtostrf(configuration.az_position_pulse_deg_per_pulse,0,3,tempstring);
+                strcat(return_string,tempstring);
+              } else {
+                strcpy_P(return_string,(const char*) F("Wait"));       // still inside the post-boot lockout
+              }
+              break;
+            }
+          }
+          strcpy_P(return_string,(const char*) F("?>"));
+        break;
+      #endif // FEATURE_AZ_POSITION_PULSE_INPUT
+
       #ifdef FEATURE_AZ_POSITION_POTENTIOMETER
         case 'F': // F - full scale calibration
           #ifdef DEBUG_PROCESS_YAESU

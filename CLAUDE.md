@@ -145,6 +145,23 @@ already properly optimized — a pending/live double-buffer, rate-limited to `LC
 per-character and only writing cells that actually changed — so this redundant-heading-option bug was the only real LCD
 issue, not the update mechanism.
 
+### Fork-added code: degrees-per-pulse lives in EEPROM, set with the `D` command
+
+Upstream's `AZ_POSITION_PULSE_DEG_PER_PULSE` is a compile-time constant used directly in
+`az_position_pulse_interrupt_handler()`. This fork moved the live value into `config_t` as
+`az_position_pulse_deg_per_pulse` (guarded by `FEATURE_AZ_POSITION_PULSE_INPUT`), seeded from the `#define` in
+`initialize_eeprom_with_defaults()`; the eight uses in the ISR now read the struct field. The `D` case in
+`process_yaesu_command()` reports it (`D` → `DPP=0.500`) or sets it (`Dxxxx`, thousandths of a degree) and calls
+`write_settings_to_eeprom()` right away — immediate persistence was an explicit choice, not an oversight.
+
+Two things to preserve if this code is touched:
+- The store is bracketed by `noInterrupts()`/`interrupts()`. The pulse ISR reads the same float, and a 4-byte store
+  on AVR is not atomic — without the guard a pulse landing mid-store reads a half-updated value.
+- `CONFIGURATION_STRUCT_VERSION` in `rotator.h` is **124**, bumped from upstream's 123 because the struct grew.
+  Without `FEATURE_CALIBRATION` only the version (not the subversion) is checked in `read_settings_from_eeprom()`,
+  so this bump is the only thing preventing an old EEPROM image from being read back into the new layout. Any future
+  change to `config_t` needs another bump — and every bump silently discards the stored settings on first boot.
+
 ### Fork-added code: `OPTION_LOCK_AZIMUTH_CONFIGURATION`
 
 `rotator_features.h` defines this fork-only option; the `.ino` consumes it in `process_yaesu_command()`, where the
@@ -183,7 +200,7 @@ pin, check whether its call sites actually guard against `0`.
 
 The ATmega328P old-bootloader Nano has only **30720 B flash / 2048 B RAM**, and this codebase is large. With
 `FEATURE_4_BIT_LCD_DISPLAY` + `FEATURE_AZ_PRESET_ENCODER` both on, a "stock" build overflows flash by ~1.3 KB. Two
-things bought back headroom (currently 16354 B / 53.2% flash, 1049 B / 51.2% RAM, PlatformIO Core 6.1.19):
+things bought back headroom (currently 16604 B / 54.0% flash, 1059 B / 51.7% RAM, PlatformIO Core 6.1.19):
 
 1. `OPTION_SAVE_MEMORY_EXCLUDE_EXTENDED_COMMANDS` and `OPTION_SAVE_MEMORY_EXCLUDE_BACKSLASH_CMDS` in
    `rotator_features.h` — K3NG's own built-in size-reduction switches. They strip a large block of rarely-used
