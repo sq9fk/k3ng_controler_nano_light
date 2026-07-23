@@ -32,7 +32,7 @@
 #define rotation_indication_pin 0
 #define blink_led 0
 #define az_stepper_motor_pulse 0
-#define az_rotation_stall_detected 0
+#define az_rotation_stall_detected 13   // onboard Nano LED - must NOT be left at 0: FEATURE_AZ_ROTATION_STALL_DETECTION does an unguarded pinMode(pin,OUTPUT) at boot, and pin 0 is the serial RX line
 
 
 

@@ -145,11 +145,20 @@ already properly optimized — a pending/live double-buffer, rate-limited to `LC
 per-character and only writing cells that actually changed — so this redundant-heading-option bug was the only real LCD
 issue, not the update mechanism.
 
+### Pin `0` does not mean "disabled" for every feature
+
+K3NG's convention is that a pin set to `0` in `rotator_pins.h` disables that function, and most call sites guard with
+`if (pin)`. **`FEATURE_AZ_ROTATION_STALL_DETECTION` does not.** Its setup block calls
+`pinModeEnhanced(az_rotation_stall_detected, OUTPUT)` unconditionally, and `digitalWriteEnhanced()` has no pin-0 guard
+either — so leaving the pin at `0` turns D0 (serial RX) into an output at boot and kills the control port. That pin is
+therefore assigned D13 (the onboard Nano LED, otherwise unused). Before enabling any other `FEATURE_*` that names a
+pin, check whether its call sites actually guard against `0`.
+
 ## Flash/RAM budget (read before enabling any new FEATURE_*)
 
 The ATmega328P old-bootloader Nano has only **30720 B flash / 2048 B RAM**, and this codebase is large. With
 `FEATURE_4_BIT_LCD_DISPLAY` + `FEATURE_AZ_PRESET_ENCODER` both on, a "stock" build overflows flash by ~1.3 KB. Two
-things bought back headroom (currently ~52% flash / ~50% RAM used):
+things bought back headroom (currently 16600 B / 54.0% flash, 1053 B / 51.4% RAM, PlatformIO Core 6.1.19):
 
 1. `OPTION_SAVE_MEMORY_EXCLUDE_EXTENDED_COMMANDS` and `OPTION_SAVE_MEMORY_EXCLUDE_BACKSLASH_CMDS` in
    `rotator_features.h` — K3NG's own built-in size-reduction switches. They strip a large block of rarely-used

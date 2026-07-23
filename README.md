@@ -36,6 +36,7 @@ Upstream's general project description, protocol documentation and feature list 
 | Azimuth position pulse | D2 (INT0) | interrupt-capable pin required; internal pull-up enabled |
 | Manual CW / CCW buttons | A5 / A4 | moved off A2/A3 to free A2 for the LCD |
 | AZ preset rotary encoder | D10 (CW) / D9 (CCW) | half-step mode, pull-ups enabled |
+| Rotation stall indicator | D13 | onboard Nano LED, no external wiring; goes high when a stall is detected |
 | LCD RS / E | D12 / D11 | |
 | LCD D4 / D5 / D6 / D7 | D5 / D4 / D3 / **A2** | LCD D7 moved off D2 to free D2 for the position pulse input |
 | AREF | external | supplied by the board through R9 |
@@ -59,6 +60,9 @@ OPTION_POSITION_PULSE_INPUT_PULLUPS  required: a dry contact leaves D2 floating 
 OPTION_AZ_POSITION_PULSE_HARD_LIMIT  required for 450 deg (see below)
 OPTION_EXTERNAL_ANALOG_REFERENCE     required: the board wires its own reference to AREF
 OPTION_AZ_PULSE_DEBOUNCE             fork-added, not in upstream (see below)
+OPTION_AZ_MANUAL_ROTATE_LIMITS       jog buttons stop at the software end stops
+FEATURE_AZ_ROTATION_STALL_DETECTION  cuts the motor if position stops changing mid-rotation
+OPTION_ROTATION_STALL_DETECTION_SERIAL_MESSAGE
 OPTION_DISPLAY_STATUS                LCD row 1 status
 OPTION_DISPLAY_HEADING_AZ_ONLY       LCD row 1 heading
 OPTION_SAVE_MEMORY_EXCLUDE_EXTENDED_COMMANDS
@@ -75,7 +79,8 @@ LANGUAGE_ENGLISH
 | `AZ_POSITION_PULSE_DEG_PER_PULSE` | 0.5 |
 | `AZ_POSITION_PULSE_DEBOUNCE` | 20 ms |
 | `AZIMUTH_TOLERANCE` | 3.0° |
-| `AZ_MANUAL_ROTATE_CCW_LIMIT` / `CW_LIMIT` | 0 / 535 |
+| `AZ_MANUAL_ROTATE_CCW_LIMIT` / `CW_LIMIT` | 182 / 628 (raw azimuth, 2° inside the mechanical stops) |
+| `STALL_CHECK_FREQUENCY_MS_AZ` / `_DEGREES_THRESHOLD_AZ` | 2000 ms / 2° |
 | `AZ_BRAKE_DELAY` | 3000 ms |
 | `LCD_COLUMNS` × `LCD_ROWS` | 16 × 2, 1000 ms refresh |
 | `CONTROL_PORT_BAUD_RATE` | 9600 |
@@ -114,8 +119,8 @@ behaves correctly on the physical board (GS-232 commands over serial, relay swit
 ### Flash and RAM budget
 
 The ATmega328P leaves very little headroom: a "stock" K3NG configuration with the LCD and preset encoder enabled
-**overflows flash by roughly 1.3 KB**. The current configuration builds at **15980 B flash (52.0 %) / 1046 B RAM
-(51.1 %)** — verified with PlatformIO Core 6.1.19 — headroom bought back by the two `OPTION_SAVE_MEMORY_EXCLUDE_*` switches (they strip rarely-used extended and `\`-prefixed serial
+**overflows flash by roughly 1.3 KB**. The current configuration builds at **16600 B flash (54.0 %) / 1053 B RAM
+(51.4 %)** — verified with PlatformIO Core 6.1.19 — headroom bought back by the two `OPTION_SAVE_MEMORY_EXCLUDE_*` switches (they strip rarely-used extended and `\`-prefixed serial
 commands; core GS-232 rotate/query commands are untouched) and by disabling every unused subsystem.
 
 **After enabling any new `FEATURE_*`, run `pio run` and check the reported usage before considering the change
