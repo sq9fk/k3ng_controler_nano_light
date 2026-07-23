@@ -124,6 +124,23 @@ Consequences baked into `rotator_settings.h`:
   the wrong way, swap the motor leads on OUT1/OUT2 (a swap, not a polarity flip). No shoot-through risk: both inputs
   high just brakes.
 
+Drive is plain on/off (full speed); at rest both inputs are low = dynamic braking.
+
+#### Potential future feature: PWM speed control
+
+The MC33186 is built to be PWM'd, so soft start/stop and a slower approach to target (less overshoot, less shock on
+a big antenna) are possible in principle — and K3NG already has the machinery (`AZ_SLOWSTART`, `AZ_SLOWDOWN`, the
+`X1`–`X4` commands, `rotate_cw_pwm`/`rotate_ccw_pwm`). **Not done, because the pin budget blocks it.** The
+ATmega328P has hardware PWM only on D3, D5, D6, D9, D10, D11, and all six are already used: D3/D5/D11 by the LCD,
+D9/D10 by the preset encoder, D6 by IN1. So IN2 (D7) and the enable (D8→D2) sit on non-PWM pins, and there is no
+free PWM pin left.
+
+To revisit it you would first free a PWM pin — drop the preset encoder (frees D9/D10) or one LCD line — then either:
+(a) move IN2 onto a PWM pin and PWM both direction inputs; or (b) move the enable (D2) onto a PWM pin and chop it
+for speed (drive/coast) with direction steady on IN1/IN2. Software PWM is possible but jittery and loads the loop,
+so it is not worth it for a heavy rotator. Whether it is worth giving up the encoder or an LCD line is the real
+question, not the firmware.
+
 The board is azimuth-only (`FEATURE_ELEVATION_CONTROL` stays off). The rotator's full-CCW mechanical stop sits at
 bearing **180°** and it carries **45° of overlap**, so `AZIMUTH_ROTATION_CAPABILITY_EEPROM_INITIALIZE` is **405**
 (360 + 45) and raw azimuth runs **180…585**. Reported by the owner, and it supersedes the 450 this fork carried
