@@ -7429,8 +7429,12 @@ void write_settings_to_eeprom(){
   const byte * p = (const byte *)(const void *)&configuration;
   unsigned int i;
   int ee = 0;
+  // update(), not write(): it compares before writing and skips unchanged bytes.
+  // check_for_dirty_configuration() calls this every EEPROM_WRITE_DIRTY_CONFIG_TIME seconds, and an unconditional
+  // write would burn all sizeof(configuration) cells - stalling loop() for 3.3 ms each - just to persist the four
+  // bytes of last_azimuth that actually changed.
   for (i = 0; i < sizeof(configuration); i++) {
-    EEPROM.write(ee++, *p++);
+    EEPROM.update(ee++, *p++);
   }
 
   configuration_dirty = 0;

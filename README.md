@@ -148,7 +148,7 @@ behaves correctly on the physical board (GS-232 commands over serial, relay swit
 ### Flash and RAM budget
 
 The ATmega328P leaves very little headroom: a "stock" K3NG configuration with the LCD and preset encoder enabled
-**overflows flash by roughly 1.3 KB**. The current configuration builds at **16604 B flash (54.0 %) / 1059 B RAM
+**overflows flash by roughly 1.3 KB**. The current configuration builds at **16620 B flash (54.1 %) / 1059 B RAM
 (51.7 %)** — verified with PlatformIO Core 6.1.19 — headroom bought back by the two `OPTION_SAVE_MEMORY_EXCLUDE_*` switches (they strip rarely-used extended and `\`-prefixed serial
 commands; core GS-232 rotate/query commands are untouched) and by disabling every unused subsystem.
 
@@ -196,7 +196,11 @@ update them, and button/loop changes from upstream may conflict.
    and a logging program that issues `P36` on connect would desync all three until the next reset. Since `\I` and
    `\J` — the proper way to change those values — are stripped anyway, the two cases are now compiled out and answer
    `?>`. Saves 246 B flash.
-6. **Alternate hardware profiles removed.** Upstream's `rotator_*_<board>.h` triads (`_m0upu`, `_wb6kcn`,
+6. **`EEPROM.update()` in `write_settings_to_eeprom()`.** Upstream writes the whole ~58-byte configuration struct
+   unconditionally. `check_for_dirty_configuration()` calls it every 30 s whenever anything is dirty — including the
+   routine `last_azimuth` update after a rotation — so each save burned 58 cells of the 100k-cycle EEPROM and stalled
+   `loop()` for ~190 ms (3.3 ms per cell) to persist four changed bytes. `update()` skips unchanged bytes.
+7. **Alternate hardware profiles removed.** Upstream's `rotator_*_<board>.h` triads (`_m0upu`, `_wb6kcn`,
    `_wb6kcn_k3ng`, `_test`) and two orphan pin files were deleted, and the `HARDWARE_*` selection mechanism in
    `rotator_hardware.h` is not used. The default `rotator_features.h` / `rotator_pins.h` / `rotator_settings.h`
    are edited directly. Keep it that way, and drop those files again if a future upstream merge reintroduces them.

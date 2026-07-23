@@ -162,6 +162,18 @@ Two things to preserve if this code is touched:
   so this bump is the only thing preventing an old EEPROM image from being read back into the new layout. Any future
   change to `config_t` needs another bump — and every bump silently discards the stored settings on first boot.
 
+### `write_settings_to_eeprom()` uses `EEPROM.update()`, not `EEPROM.write()`
+
+Upstream writes all `sizeof(configuration)` (~58) bytes unconditionally. That matters because
+`check_for_dirty_configuration()` calls this routine every `EEPROM_WRITE_DIRTY_CONFIG_TIME` (30) seconds whenever
+`configuration_dirty` is set — which 46 call sites do, including the ordinary update of `last_azimuth` after a
+rotation. So a rotation cost 58 cells of the 100k-cycle EEPROM plus ~190 ms of stalled `loop()` (3.3 ms per cell,
+interrupts stay enabled so serial RX survives, but `service_rotation()` doesn't run) to persist the four bytes that
+actually changed. `update()` compares first and skips unchanged bytes, cutting the usual case to those four.
+
+Don't "optimize" this back, and keep it in mind if a future change makes more of the struct change frequently. The
+two remaining `EEPROM.write()` calls are in the `FEATURE_SATELLITE_TRACKING` TLE area and are dead code here.
+
 ### Fork-added code: `OPTION_LOCK_AZIMUTH_CONFIGURATION`
 
 `rotator_features.h` defines this fork-only option; the `.ino` consumes it in `process_yaesu_command()`, where the
@@ -200,7 +212,7 @@ pin, check whether its call sites actually guard against `0`.
 
 The ATmega328P old-bootloader Nano has only **30720 B flash / 2048 B RAM**, and this codebase is large. With
 `FEATURE_4_BIT_LCD_DISPLAY` + `FEATURE_AZ_PRESET_ENCODER` both on, a "stock" build overflows flash by ~1.3 KB. Two
-things bought back headroom (currently 16604 B / 54.0% flash, 1059 B / 51.7% RAM, PlatformIO Core 6.1.19):
+things bought back headroom (currently 16620 B / 54.1% flash, 1059 B / 51.7% RAM, PlatformIO Core 6.1.19):
 
 1. `OPTION_SAVE_MEMORY_EXCLUDE_EXTENDED_COMMANDS` and `OPTION_SAVE_MEMORY_EXCLUDE_BACKSLASH_CMDS` in
    `rotator_features.h` — K3NG's own built-in size-reduction switches. They strip a large block of rarely-used
