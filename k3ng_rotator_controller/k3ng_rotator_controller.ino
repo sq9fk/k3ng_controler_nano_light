@@ -18083,6 +18083,47 @@ void process_yaesu_command(byte * yaesu_command_buffer, int yaesu_command_buffer
           }
           strcpy_P(return_string,(const char*) F("?>"));
         break;
+
+        case 'I':  // fork-added: I - query raw azimuth, Ixxx - declare the rotator's true raw position
+          if (yaesu_command_buffer_index == 1) {                       // bare I - report raw, which C cannot express
+            strcpy(return_string,"RAW=");
+            dtostrf(raw_azimuth,0,0,tempstring);
+            strcat(return_string,tempstring);
+            break;
+          }
+          if (yaesu_command_buffer_index == 4) {                       // Ixxx - set
+            parsed_value = 0;
+            for (byte d = 1; d < 4; d++) {
+              if ((yaesu_command_buffer[d] < '0') || (yaesu_command_buffer[d] > '9')) {
+                parsed_value = -1;
+                break;
+              }
+              parsed_value = (parsed_value * 10) + (yaesu_command_buffer[d] - 48);
+            }
+            if ((parsed_value >= configuration.azimuth_starting_point) &&
+                (parsed_value <= (configuration.azimuth_starting_point + configuration.azimuth_rotation_capability))) {
+              if (millis() > ROTATIONAL_AND_CONFIGURATION_CMD_IGNORE_TIME_MS) {
+                // az_position_pulse_input_azimuth is the authoritative accumulator - read_azimuth() derives
+                // raw_azimuth from it, so setting only raw_azimuth (as upstream's \A does) would be undone by
+                // the very next pulse. noInterrupts() because the pulse ISR writes this same volatile float.
+                noInterrupts();
+                az_position_pulse_input_azimuth = (float)parsed_value;
+                interrupts();
+                configuration.last_azimuth = (float)parsed_value;
+                raw_azimuth = (float)parsed_value;
+                convert_raw_azimuth_to_real_azimuth();
+                write_settings_to_eeprom();
+                strcpy(return_string,"RAW=");
+                dtostrf(raw_azimuth,0,0,tempstring);
+                strcat(return_string,tempstring);
+              } else {
+                strcpy_P(return_string,(const char*) F("Wait"));
+              }
+              break;
+            }
+          }
+          strcpy_P(return_string,(const char*) F("?>"));
+        break;
       #endif // FEATURE_AZ_POSITION_PULSE_INPUT
 
       #ifdef FEATURE_AZ_POSITION_POTENTIOMETER

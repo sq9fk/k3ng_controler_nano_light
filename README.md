@@ -77,13 +77,15 @@ actually answers is a short list:
 
 | Command | Action | Reply |
 |---|---|---|
-| `C` | report azimuth | `AZ=xxx` |
+| `C` | report azimuth (real, 0–359 — see `I` for raw) | `AZ=xxx` |
 | `C2` | report azimuth and elevation | `AZ=xxxEL=000` — the elevation is a dummy, there is no EL axis |
 | `M###` | rotate to azimuth (0–630 raw) | nothing on success, `?>` on a bad value |
 | `L` / `R` | rotate CCW / CW | — |
 | `A` | stop azimuth rotation | — |
 | `S` | stop everything | — |
 | `X1`–`X4` | speed change | `Speed X1`…`X4` — **accepted but inert**, this board has no PWM speed output wired |
+| `I` | report **raw** azimuth (180–630) | `RAW=370` |
+| `Ixxx` | declare the rotator's true raw position and save to EEPROM | `RAW=370`, or `Wait` inside the post-boot lockout |
 | `D` | report degrees per position pulse | `DPP=0.500` |
 | `Dxxxx` | set degrees per pulse to `xxxx`/1000 and save to EEPROM immediately | `DPP=0.500`, or `Wait` inside the post-boot lockout |
 | `H` | help | nothing (`OPTION_SERIAL_HELP_TEXT` is off) |
@@ -148,8 +150,8 @@ behaves correctly on the physical board (GS-232 commands over serial, relay swit
 ### Flash and RAM budget
 
 The ATmega328P leaves very little headroom: a "stock" K3NG configuration with the LCD and preset encoder enabled
-**overflows flash by roughly 1.3 KB**. The current configuration builds at **16620 B flash (54.1 %) / 1059 B RAM
-(51.7 %)** — verified with PlatformIO Core 6.1.19 — headroom bought back by the two `OPTION_SAVE_MEMORY_EXCLUDE_*` switches (they strip rarely-used extended and `\`-prefixed serial
+**overflows flash by roughly 1.3 KB**. The current configuration builds at **16930 B flash (55.1 %) / 1063 B RAM
+(51.9 %)** — verified with PlatformIO Core 6.1.19 — headroom bought back by the two `OPTION_SAVE_MEMORY_EXCLUDE_*` switches (they strip rarely-used extended and `\`-prefixed serial
 commands; core GS-232 rotate/query commands are untouched) and by disabling every unused subsystem.
 
 **After enabling any new `FEATURE_*`, run `pio run` and check the reported usage before considering the change
@@ -190,17 +192,24 @@ update them, and button/loop changes from upstream may conflict.
    and a 4-byte store is not atomic on AVR. `CONFIGURATION_STRUCT_VERSION` was bumped 123 → 124 so an EEPROM image
    written by an older build is discarded rather than misread — **the first boot after flashing this therefore
    re-initializes EEPROM and loses the stored azimuth**, so set the position once afterwards.
-5. **`OPTION_LOCK_AZIMUTH_CONFIGURATION` (new option).** GS-232B's `P36`/`P45` set the rotation capability and `Z`
+5. **Raw position query and sync, the `I` command (new code).** `C` reports a real azimuth of 0–359, which cannot
+   express which turn the rotator is on — 10° is raw 10 or raw 370 and nothing in the protocol distinguishes them.
+   `I` reports the raw value; `Ixxx` declares the rotator's true raw position, for when the count has drifted or the
+   rotator was moved by hand. `I` is not part of the GS-232 command set, so no logging program will send it by
+   accident. The setter writes `az_position_pulse_input_azimuth` — the accumulator the pulse ISR increments and
+   `read_azimuth()` derives from — under `noInterrupts()`. **Upstream's `\A` does not do this**: it sets
+   `raw_azimuth` and `last_azimuth` only, so on a pulse-input rotator its effect is undone by the next pulse.
+6. **`OPTION_LOCK_AZIMUTH_CONFIGURATION` (new option).** GS-232B's `P36`/`P45` set the rotation capability and `Z`
    toggles the starting point between north- and south-centre. On this rotator both are destructive: the 180°
    starting point and 450° capability are the basis for the jog limits, the pulse hard limit and the preset encoder,
    and a logging program that issues `P36` on connect would desync all three until the next reset. Since `\I` and
    `\J` — the proper way to change those values — are stripped anyway, the two cases are now compiled out and answer
    `?>`. Saves 246 B flash.
-6. **`EEPROM.update()` in `write_settings_to_eeprom()`.** Upstream writes the whole ~58-byte configuration struct
+7. **`EEPROM.update()` in `write_settings_to_eeprom()`.** Upstream writes the whole ~58-byte configuration struct
    unconditionally. `check_for_dirty_configuration()` calls it every 30 s whenever anything is dirty — including the
    routine `last_azimuth` update after a rotation — so each save burned 58 cells of the 100k-cycle EEPROM and stalled
    `loop()` for ~190 ms (3.3 ms per cell) to persist four changed bytes. `update()` skips unchanged bytes.
-7. **Alternate hardware profiles removed.** Upstream's `rotator_*_<board>.h` triads (`_m0upu`, `_wb6kcn`,
+8. **Alternate hardware profiles removed.** Upstream's `rotator_*_<board>.h` triads (`_m0upu`, `_wb6kcn`,
    `_wb6kcn_k3ng`, `_test`) and two orphan pin files were deleted, and the `HARDWARE_*` selection mechanism in
    `rotator_hardware.h` is not used. The default `rotator_features.h` / `rotator_pins.h` / `rotator_settings.h`
    are edited directly. Keep it that way, and drop those files again if a future upstream merge reintroduces them.
