@@ -269,7 +269,7 @@ pin, check whether its call sites actually guard against `0`.
 
 The ATmega328P old-bootloader Nano has only **30720 B flash / 2048 B RAM**, and this codebase is large. With
 `FEATURE_4_BIT_LCD_DISPLAY` + `FEATURE_AZ_PRESET_ENCODER` both on, a "stock" build overflows flash by ~1.3 KB. Two
-things bought back headroom (currently 16930 B / 55.1% flash, 1063 B / 51.9% RAM, PlatformIO Core 6.1.19):
+things bought back headroom (currently 16922 B / 55.1% flash, 1063 B / 51.9% RAM, PlatformIO Core 6.1.19):
 
 1. `OPTION_SAVE_MEMORY_EXCLUDE_EXTENDED_COMMANDS` and `OPTION_SAVE_MEMORY_EXCLUDE_BACKSLASH_CMDS` in
    `rotator_features.h` — K3NG's own built-in size-reduction switches. They strip a large block of rarely-used

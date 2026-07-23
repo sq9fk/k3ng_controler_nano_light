@@ -66,6 +66,10 @@ all, D2 is active-LOW on this module — set both brake states HIGH instead; (2)
 motor leads on OUT1/OUT2 (a swap, not a polarity flip). Because the H-bridge shorts the motor when both inputs are
 low, there is no vertical shoot-through even if CW and CCW were ever asserted together.
 
+Drive is plain on/off (full speed). PWM speed control (soft start/stop) would suit the H-bridge but is blocked by
+the pin budget — all six ATmega328P PWM pins are used by the LCD and preset encoder. Recorded as a potential future
+feature in [CLAUDE.md](CLAUDE.md).
+
 ## Enabled feature set
 
 Everything below is what is actually compiled in (`rotator_features.h`); anything not listed is off.
@@ -172,7 +176,7 @@ behaves correctly on the physical board (GS-232 commands over serial, relay swit
 ### Flash and RAM budget
 
 The ATmega328P leaves very little headroom: a "stock" K3NG configuration with the LCD and preset encoder enabled
-**overflows flash by roughly 1.3 KB**. The current configuration builds at **16930 B flash (55.1 %) / 1063 B RAM
+**overflows flash by roughly 1.3 KB**. The current configuration builds at **16922 B flash (55.1 %) / 1063 B RAM
 (51.9 %)** — verified with PlatformIO Core 6.1.19 — headroom bought back by the two `OPTION_SAVE_MEMORY_EXCLUDE_*` switches (they strip rarely-used extended and `\`-prefixed serial
 commands; core GS-232 rotate/query commands are untouched) and by disabling every unused subsystem.
 
