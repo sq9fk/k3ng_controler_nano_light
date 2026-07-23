@@ -1,78 +1,192 @@
-# K3NG Rotator Controller
+# K3NG Rotator Controller — RemoteQTH v3.3 / Nano "light" fork
 
-## Introduction
+A trimmed-down fork of the [K3NG Arduino rotator controller](https://github.com/k3ng/k3ng_rotator_controller),
+configured for exactly one hardware setup: a **RemoteQTH Rotator Interface v3.3** board (Arduino Nano, ATmega328P,
+old bootloader) driving an **azimuth-only, 450°-capable** rotator whose position sensor is a **reed switch /
+contactron pulse output**.
 
-This is an Arduino-based rotator interface that interfaces a computer to a rotator or rotator controller, emulating the Yaesu GS-232A/B and Easycom protocols which are supported by a myriad of logging, contest, and control programs.  It can be easily interfaced with commercial rotator control units.  With the addition of a proper capacity power supply and several interface components such as relays, this unit could also serve as a total replacement for a rotator control unit or serve as the basis for a 100% homebrew rotation system.  Several azimuth and elevation position sensors including potentiometers, rotary encoders, and I2C devices are supported.  The code is very flexible, modular, and easy to read allowing intermediate and advanced experimenters and builders to customize it.
+This is not a general-purpose build. Every optional K3NG subsystem that this board does not use (elevation, GPS,
+RTC/clock, ethernet, moon/sun/satellite tracking, stepper motor, compass/accelerometer sensors, alternate display
+types) is disabled, and the alternate-hardware profile files shipped upstream have been removed — the ATmega328P
+does not have the flash to carry them.
 
-## Documentation
+Upstream's general project description, protocol documentation and feature list still apply and live in the
+[K3NG wiki](https://github.com/k3ng/k3ng_rotator_controller/wiki).
 
-Full documentation is located [here](https://github.com/k3ng/k3ng_rotator_controller/wiki).  Please read it!  Volunteers for maintaining documentation are needed.
+## Hardware
 
-## Features
+| Item | Value |
+|---|---|
+| Board | RemoteQTH Rotator Interface v3.3 (OK1HRA), Arduino Nano ATmega328P, old bootloader |
+| Flash / RAM | 30720 B / 2048 B |
+| Axes | Azimuth only (`FEATURE_ELEVATION_CONTROL` off) |
+| Rotator | 450° rotation capability, starting point 180° |
+| Position sensor | Pulse input (dry contact reed switch), 0.5° per pulse |
+| Display | 16×2 HD44780 LCD, 4-bit parallel |
+| Controls | Manual CW/CCW jog buttons + rotary encoder for azimuth preset |
+| Control protocol | Yaesu GS-232B emulation over USB serial, 9600 baud |
 
-* Azimuth only and azimuth / elevation rotator support
-* Serial interface using the standard Arduino USB port
-* Control Port Protocol Support:
- * Yaesu GS-232A & GS-232B
- * Easycom
-* Support for position sensors:
- * Potentiometers / Analog Voltage
- * Rotary Encoders
- * Incremental Encoders
- * Pulse Output
- * HMC5883L digital compass
- * ADXL345 accelerometer
- * LSM303 digital compass and accelerometer
- * HH-12 / AS5045
- * A2 Absolute Encoder (under development)
-* LCD display (2 or 4 rows, at least 16 columns)
-* Can be interfaced with non-Yaesu rotators, including homebrew systems
-* Directional indication on LCD display (North, South, North Northwest, etc.) along with degrees
-* Intelligent automatic rotation (utilizes overlap on 450 degree rotators)
-* Support for both 360 degree and 450 degree azimuth rotators or any rotation capability up to 719 degrees
-* North Center and South Center support
-* Support for any starting point (fully clockwise)
-* Optional automatic azimuthal rotation slowdown feature when reaching target azimuth
-* Optional rotation smooth ramp up
-* Optional brake engage/disengage lines for azimuth and elevation
-* Buttons for manual rotation
-* Command timeout
-* Timed interval rotation
-* Overlap LED Indicator
-* Help screen
-* Speed Control, both single PWM output (compatible with Yaesu controllers) and dual PWM rotate CW and rotate CCW outputs and dual elevate up and elevate down outputs
-* Variable frequency outputs
-* Preset Control using either potentiometers or rotary encoders with optional preset start button
-* Speed Potentiometer
-* Manual Rotation Limits
-* Classic 4 bit, Adafruit I2C LCD, and Yourduino.com Display Support
-* Optional tenth of a degree support with Easycom protocol (i.e. 123.4 degrees)
-* Park button
-* Azimuth and elevation calibration tables
-* Host unit and Remote unit operation for remotely located sensors using two Arduinos or ATMega chips
-* Works with hamlib rotctl/rotcltd, HRD, N1MM, PST Rotator, and many more programs
-* Moon and Sun Tracking
-* GPS Interfacing
-* Realtime Clock Interfacing
+### Pin map (traced from the rev 3.3 KiCad schematic, plus later physical rewiring)
 
-## Acknowledgements
+| Signal | Pin | Notes |
+|---|---|---|
+| CW relay | D6 | R3 → Q3 → RL1 |
+| CCW relay | D7 | R2 → Q2 → RL2 |
+| Brake relay | D8 | R1 → Q1 → RL3, 3 s engage delay, active HIGH = disengaged |
+| Azimuth position pulse | D2 (INT0) | interrupt-capable pin required; internal pull-up enabled |
+| Manual CW / CCW buttons | A5 / A4 | moved off A2/A3 to free A2 for the LCD |
+| AZ preset rotary encoder | D10 (CW) / D9 (CCW) | half-step mode, pull-ups enabled |
+| LCD RS / E | D12 / D11 | |
+| LCD D4 / D5 / D6 / D7 | D5 / D4 / D3 / **A2** | LCD D7 moved off D2 to free D2 for the position pulse input |
+| AREF | external | supplied by the board through R9 |
 
-John, W3SA, has tested on a Yaesu Az/El unit, contributed several updates to the elevation code, and tweaked the code for a 16 column LCD display.
+Unused K3NG outputs (PWM speed control, speed/preset pots, overlap LED, serial LED, stop button) are set to `0`
+(disabled) in `rotator_pins.h`.
 
-Anthony, M0UPU, [wrote about](http://ava.upuaut.net/?p=372) his rotator controller construction and is offering PC boards.
+## Enabled feature set
 
-Bent, OZ1CT, has contributed several ideas and feature requests, and performed testing.
+Everything below is what is actually compiled in (`rotator_features.h`); anything not listed is off.
 
-G4HSK has a [nice page documenting](http://radio.g4hsk.co.uk/2m-eme/rotator-controller/) his project using this code, the PstRotator control software, and a Yaesu G-5500 rotator.
+```
+FEATURE_YAESU_EMULATION              GS-232 command set on the control port
+OPTION_GS_232B_EMULATION             GS-232B dialect (not A)
+FEATURE_AZ_POSITION_PULSE_INPUT      pulse-counted azimuth from the reed switch
+FEATURE_4_BIT_LCD_DISPLAY            16x2 HD44780
+FEATURE_AZ_PRESET_ENCODER            front-panel preset knob
+OPTION_ENCODER_HALF_STEP_MODE
+OPTION_ENCODER_ENABLE_PULLUPS
+OPTION_POSITION_PULSE_INPUT_PULLUPS  required: a dry contact leaves D2 floating without it
+OPTION_AZ_POSITION_PULSE_HARD_LIMIT  required for 450 deg (see below)
+OPTION_EXTERNAL_ANALOG_REFERENCE     required: the board wires its own reference to AREF
+OPTION_AZ_PULSE_DEBOUNCE             fork-added, not in upstream (see below)
+OPTION_DISPLAY_STATUS                LCD row 1 status
+OPTION_DISPLAY_HEADING_AZ_ONLY       LCD row 1 heading
+OPTION_SAVE_MEMORY_EXCLUDE_EXTENDED_COMMANDS
+OPTION_SAVE_MEMORY_EXCLUDE_BACKSLASH_CMDS
+LANGUAGE_ENGLISH
+```
 
-All trademarks mentioned on this page and in the code are property of their respective owners.
+### Key settings (`rotator_settings.h`)
 
-## DXpeditions
+| Setting | Value |
+|---|---|
+| `AZIMUTH_STARTING_POINT_EEPROM_INITIALIZE` | 180 |
+| `AZIMUTH_ROTATION_CAPABILITY_EEPROM_INITIALIZE` | 450 |
+| `AZ_POSITION_PULSE_DEG_PER_PULSE` | 0.5 |
+| `AZ_POSITION_PULSE_DEBOUNCE` | 20 ms |
+| `AZIMUTH_TOLERANCE` | 3.0° |
+| `AZ_MANUAL_ROTATE_CCW_LIMIT` / `CW_LIMIT` | 0 / 535 |
+| `AZ_BRAKE_DELAY` | 3000 ms |
+| `LCD_COLUMNS` × `LCD_ROWS` | 16 × 2, 1000 ms refresh |
+| `CONTROL_PORT_BAUD_RATE` | 9600 |
 
-I will donate parts, units, or specially customized software for DXpeditions.  Email me at anthony dot good at gmail dot com.  DX IS!
+These values are EEPROM-initialized on first run only; changing the starting point or rotation capability later
+means re-initializing EEPROM or setting it over the serial command interface.
 
-## Support and Feature Requests
+## Build, flash, monitor
 
-Please consult [this page](https://blog.radioartisan.com/support-for-k3ng-projects/) for support information.  Feature requests and bugs are documented and tracked on [GitHub](https://github.com/k3ng/k3ng_rotator_controller/issues).
+PlatformIO is the primary toolchain (`platformio.ini` at the repo root, env `nanoatmega328`):
 
-Please note that I do this work in my spare time as I can and I am not a professional developer, however I play one on TV.  I do my best to answer support requests,  however I don’t like having to answer questions for items that are explained in the [documentation](https://github.com/k3ng/k3ng_rotator_controller/wiki).  I do maintain a list of [feature requests](https://github.com/k3ng/k3ng_rotator_controller/issues).  Development items are prioritized by me based on the level of difficulty and what I’m interested in.  I welcome code contributions, code testing, bug reports, and any help you can provide.  This can even be helping with [documentation](https://github.com/k3ng/k3ng_rotator_controller/wiki) or providing support to others on the [Radio Artisan discussion group](https://groups.yahoo.com/neo/groups/radioartisan/info).
+```bash
+pio run
+```
+
+```bash
+pio run -t upload
+```
+
+```bash
+pio device monitor
+```
+
+```bash
+pio run -t clean
+```
+
+The sketch is deliberately kept as `k3ng_rotator_controller/k3ng_rotator_controller.ino` so it still opens in the
+Arduino IDE. For Arduino IDE builds the vendored `libraries/` subfolders have to be on the IDE's library path
+(copy or symlink them into your sketchbook `libraries/`); PlatformIO does **not** need this and pulls
+`LiquidCrystal` from the registry instead.
+
+There is no test suite — this is firmware. Verification means: it compiles, it fits in the flash/RAM budget, and it
+behaves correctly on the physical board (GS-232 commands over serial, relay switching, position readback).
+
+### Flash and RAM budget
+
+The ATmega328P leaves very little headroom: a "stock" K3NG configuration with the LCD and preset encoder enabled
+**overflows flash by roughly 1.3 KB**. The current configuration sits at about **52 % flash / 50 % RAM**, bought
+back by the two `OPTION_SAVE_MEMORY_EXCLUDE_*` switches (they strip rarely-used extended and `\`-prefixed serial
+commands; core GS-232 rotate/query commands are untouched) and by disabling every unused subsystem.
+
+**After enabling any new `FEATURE_*`, run `pio run` and check the reported usage before considering the change
+done.**
+
+### Vendored libraries caveat
+
+`libraries/` holds ~15 Arduino-IDE-style third-party libraries used by *optional* upstream features. Do **not** add
+that folder wholesale via `lib_extra_dirs`: PlatformIO's dependency finder scans `#include` lines textually and
+ignores `#ifdef` guards, so it would pull in every library including Mega-only ones (`TimerFive`) that do not
+compile for the ATmega328P. If a newly enabled feature needs one of them, add that single subfolder.
+
+## Differences from upstream
+
+Beyond configuration, this fork carries four code changes. `git fetch upstream` merges will not reintroduce or
+update them, and button/loop changes from upstream may conflict.
+
+1. **AZ pulse debounce (new code).** Upstream debounces only the *elevation* pulse input. Because this board's
+   azimuth sensor is a bounce-prone mechanical reed switch, the same pattern was ported to azimuth:
+   `OPTION_AZ_PULSE_DEBOUNCE` gates it, `AZ_POSITION_PULSE_DEBOUNCE` (20 ms) sizes it, and
+   `az_position_pulse_interrupt_handler()` mirrors the EL structure. Do **not** copy the EL default of 500 ms — at
+   0.5° per pulse a fast rotator produces real pulses far more often than that, and an over-long window silently
+   drops genuine pulses. Keep the value well below the shortest real inter-pulse gap at full rotation speed.
+2. **Non-blocking manual-button release debounce.** Upstream `check_buttons()` calls a blocking `delay(200)` on
+   every jog-button release, stalling the whole loop. It now uses a `millis()`-based pending timer
+   (`az_button_release_pending_time`): the stop request is issued once 200 ms have elapsed across loop iterations,
+   and a re-press cancels it. Same behaviour and same window, without the stall.
+3. **Trimmed main loop.** Upstream calls `read_headings()` / `service_rotation()` three times per `loop()` to keep
+   rotation responsive around the potentially slow GPS / ethernet / tracking blocks. Since this fork will never
+   enable those, the two extra pairs were removed; the pair at the top of `loop()` and the `read_headings()` that
+   feeds `check_buttons()` / `check_overlap()` / `check_brake_release()` remain. If one of those blocks is ever
+   enabled, put an equivalent pair back around it.
+4. **Alternate hardware profiles removed.** Upstream's `rotator_*_<board>.h` triads (`_m0upu`, `_wb6kcn`,
+   `_wb6kcn_k3ng`, `_test`) and two orphan pin files were deleted, and the `HARDWARE_*` selection mechanism in
+   `rotator_hardware.h` is not used. The default `rotator_features.h` / `rotator_pins.h` / `rotator_settings.h`
+   are edited directly. Keep it that way, and drop those files again if a future upstream merge reintroduces them.
+
+## Things that must not be "fixed"
+
+This codebase has no single rotation-capability switch — several subsystems hardcode 360°. For a 450° rotator:
+
+- `OPTION_AZ_POSITION_PULSE_HARD_LIMIT` must stay **enabled**. Without it the pulse-counted azimuth wraps at a
+  hardcoded 360° instead of clamping at `azimuth_starting_point + azimuth_rotation_capability`, corrupting position
+  tracking as soon as the rotor enters the overlap zone.
+- `OPTION_PRESET_ENCODER_0_360_DEGREES` must stay **disabled**. Enabled, it clamps the preset knob at a hardcoded
+  360°, making the 360–450° overlap zone unreachable from the front panel.
+- `OPTION_EXTERNAL_ANALOG_REFERENCE` must stay **enabled** regardless of which position sensor is active — the
+  board wires its own reference to AREF, and switching to the internal reference with an external one connected
+  risks damaging the chip.
+- `OPTION_DISPLAY_HEADING` must stay **disabled**, with only `OPTION_DISPLAY_HEADING_AZ_ONLY` on. With elevation
+  off, the generic option also prints the azimuth heading (to row 2), duplicating row 1 and wasting the second LCD
+  row. Both were enabled at once by upstream default; that was fixed.
+
+## Repository layout
+
+```
+k3ng_rotator_controller/     the sketch (.ino) plus rotator_*.h/.cpp, all one translation unit
+  rotator_features.h         what is compiled in
+  rotator_pins.h             pin assignments
+  rotator_settings.h         tunable values, calibration, limits
+  rotator_dependencies.h     compile-time rule checker (#errors on invalid combinations)
+libraries/                   vendored third-party libraries for optional upstream features
+tle/                         upstream satellite TLE data (unused by this build)
+platformio.ini               PlatformIO configuration
+CLAUDE.md                    working notes for Claude Code
+```
+
+There is no OOP layering: `setup()` initializes serial, EEPROM settings, pins, display, encoders and interrupts,
+and `loop()` is a flat polling sequence of `check_*()` / `service_*()` / `read_*()` calls gated by `#ifdef`.
+Interrupts are used only for the encoder and the position pulse input.
+
+## License
+
+Upstream K3NG licensing applies — see [LICENSE](LICENSE).
