@@ -33,9 +33,9 @@ on the network over rotctld, a raw GS-232 socket and a web panel. The `I` and `D
 
 | Signal | Pin | Notes |
 |---|---|---|
-| CW relay | D6 | R3 → Q3 → RL1 |
-| CCW relay | D7 | R2 → Q2 → RL2 |
-| Brake relay | D8 | R1 → Q1 → RL3, 3 s engage delay, active HIGH = disengaged |
+| Motor drive CW | D6 | → MC33186 **IN1** (see H-bridge note below) |
+| Motor drive CCW | D7 | → MC33186 **IN2** |
+| Bridge enable | D8 | → MC33186 **D2** (active-HIGH disable); held LOW = bridge always enabled |
 | Azimuth position pulse | D2 (INT0) | interrupt-capable pin required; internal pull-up enabled |
 | Manual CW / CCW buttons | A5 / A4 | moved off A2/A3 to free A2 for the LCD |
 | AZ preset rotary encoder | D10 (CW) / D9 (CCW) | half-step mode, pull-ups enabled |
@@ -46,6 +46,25 @@ on the network over rotctld, a raw GS-232 socket and a web panel. The `I` and `D
 
 Unused K3NG outputs (PWM speed control, speed/preset pots, overlap LED, serial LED, stop button) are set to `0`
 (disabled) in `rotator_pins.h`.
+
+### Motor drive: MC33186 H-bridge, not relays
+
+The board's relays and their driver transistors (Q1–Q3) were removed. An **MC33186 H-bridge module (CJMCU-3386)**
+now drives the motor, fed from the old transistor-base nodes through a **non-inverting level shifter**:
+
+- D6 (`rotate_cw`) → **IN1**, D7 (`rotate_ccw`) → **IN2**. The MC33186 is non-inverting (input high → that output
+  high), so the drive stays active-HIGH — no polarity change. `rotate_cw` high drives one way, `rotate_ccw` high the
+  other, and **both low shorts the motor to ground, dynamically braking it** — that state holds the rotator at rest,
+  taking over the job the mechanical brake relay used to do.
+- D8 (`brake_az`) → the bridge's **D2** disable input (active-HIGH: high = outputs high-Z/coast, low = enabled).
+  `BRAKE_ACTIVE_STATE`/`INACTIVE_STATE` are both forced **LOW** so D2 stays low and the bridge is always enabled,
+  and `AZ_BRAKE_DELAY` is `0`. Stock K3NG raises `brake_az` to "release" the brake for rotation, which here would
+  raise D2 and disable the bridge exactly when trying to move — so the polarity had to be inverted.
+
+**Not yet verified on the physical setup.** Two things to check on the bench: (1) if the rotator will not move at
+all, D2 is active-LOW on this module — set both brake states HIGH instead; (2) if it moves the wrong way, swap the
+motor leads on OUT1/OUT2 (a swap, not a polarity flip). Because the H-bridge shorts the motor when both inputs are
+low, there is no vertical shoot-through even if CW and CCW were ever asserted together.
 
 ## Enabled feature set
 

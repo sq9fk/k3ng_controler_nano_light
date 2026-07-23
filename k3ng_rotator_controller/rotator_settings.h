@@ -158,11 +158,28 @@ You can tweak these, but read the online documentation!
 #define LCD_HHMM_CLOCK_ROW 1
 #define PARKING_STATUS_DISPLAY_TIME_MS 5000
 
-#define AZ_BRAKE_DELAY 3000            // in milliseconds
+// Hardware change: the relays and their driver transistors were removed and an
+// MC33186 H-bridge module (CJMCU-3386) now drives the motor, fed from the old
+// transistor-base nodes through a non-inverting level shifter:
+//   Q3 base (D6, rotate_cw)  -> IN1
+//   Q2 base (D7, rotate_ccw) -> IN2
+//   Q1 base (D8, brake_az)   -> D2  (the bridge's disable input)
+//
+// D2 is an active-HIGH disable: D2 high = outputs high-Z (coast), D2 low =
+// bridge enabled. We want the bridge enabled at all times - driving when one
+// direction input is high, and dynamically braking to ground when both are low
+// at rest (which holds the rotator). So brake_az must sit LOW permanently.
+// K3NG's stock polarity did the opposite: it raised brake_az to "release" the
+// brake for rotation, which here would raise D2 and DISABLE the bridge exactly
+// when trying to move. Both states are therefore forced LOW, and the
+// brake-release delay is zeroed since there is no mechanical brake to wait for.
+// NOTE: verify D2's polarity on the actual module - if the rotator will not
+// drive with these LOW, D2 is active-low and both should be HIGH instead.
+#define AZ_BRAKE_DELAY 0              // no mechanical brake; nothing to wait for
 #define EL_BRAKE_DELAY 3000            // in milliseconds
 
-#define BRAKE_ACTIVE_STATE HIGH
-#define BRAKE_INACTIVE_STATE LOW
+#define BRAKE_ACTIVE_STATE LOW        // brake_az -> MC33186 D2; LOW = bridge enabled
+#define BRAKE_INACTIVE_STATE LOW      // both states LOW so D2 stays low (enabled) always
 
 #define EEPROM_WRITE_DIRTY_CONFIG_TIME  30  //time in seconds
 
@@ -348,6 +365,11 @@ You can tweak these, but read the online documentation!
 #define ROTATE_PIN_ACTIVE_VALUE HIGH */
 
 // Added in version 2020.06.20.01
+// Stays active-HIGH: D6->IN1 and D7->IN2 through a non-inverting level shifter
+// into the non-inverting MC33186 (IN high -> OUT high). rotate_cw high drives
+// one way, rotate_ccw high the other, both low brakes to ground. If the physical
+// CW/CCW comes out reversed, swap the two motor leads on OUT1/OUT2 (or the
+// rotate_cw/rotate_ccw pins) - that is a swap, not a polarity flip.
 #define ROTATE_PIN_AZ_INACTIVE_VALUE LOW
 #define ROTATE_PIN_AZ_ACTIVE_VALUE HIGH
 #define ROTATE_PIN_EL_INACTIVE_VALUE LOW

@@ -97,14 +97,32 @@ doubt, physical wiring as reported by whoever has the board in hand wins over th
 
 | Signal | Pin | Notes |
 |---|---|---|
-| CW relay | D6 | via R3→Q3→RL1 |
-| CCW relay | D7 | via R2→Q2→RL2 |
-| Brake relay | D8 | via R1→Q1→RL3 |
+| Motor drive CW | D6 | → MC33186 IN1 — the relays/transistors are gone, see the H-bridge note below |
+| Motor drive CCW | D7 | → MC33186 IN2 |
+| Bridge enable | D8 | → MC33186 D2 (active-HIGH disable), held LOW = always enabled |
 | Azimuth position | pulse input, D2 (INT0) | rotor position sensor is a reed switch/"contactron" (dry contact), not analog voltage — `FEATURE_AZ_POSITION_PULSE_INPUT`; calibrate `AZ_POSITION_PULSE_DEG_PER_PULSE` in `rotator_settings.h` against the actual rotor spec; `OPTION_POSITION_PULSE_INPUT_PULLUPS` must stay enabled since a dry contact needs the internal pull-up or D2 floats between pulses |
 | AREF | external | board supplies its own reference through R9. `OPTION_EXTERNAL_ANALOG_REFERENCE` is **disabled** and needs to stay that way only as long as nothing reads an analog pin — see below |
 | Manual CW/CCW jog buttons | CW=A5, CCW=A4 | moved off A2/A3 to free A2 for LCD D7 |
 | LCD (16x2, 4-bit) | RS=D12, E=D11, D4=D5, D5=D4, D6=D3, D7=A2 | D7 moved off D2 to free D2 for the azimuth pulse input above |
 | AZ preset rotary encoder | D10 / D9 | |
+
+### Motor drive is an MC33186 H-bridge, not the original relays
+
+The board's relays and their driver transistors (Q1–Q3) were physically removed. An **MC33186 H-bridge module
+(CJMCU-3386)** now drives the motor, wired from the old transistor-base nodes through a **non-inverting level
+shifter**: Q3 base (D6/`rotate_cw`) → IN1, Q2 base (D7/`rotate_ccw`) → IN2, Q1 base (D8/`brake_az`) → **D2** (the
+bridge's disable input — note this is the MC33186's D2, unrelated to the Arduino pin D2 used for the position pulse).
+
+Consequences baked into `rotator_settings.h`:
+- The MC33186 is non-inverting, so `ROTATE_PIN_AZ_ACTIVE_VALUE` stays **HIGH**. Both direction inputs low shorts the
+  motor to ground = dynamic braking, which holds the rotator and replaces the old brake relay.
+- D2 is an **active-HIGH disable** (high = coast, low = enabled). `BRAKE_ACTIVE_STATE` and `BRAKE_INACTIVE_STATE` are
+  both forced **LOW** so D2 stays low and the bridge is always enabled, and `AZ_BRAKE_DELAY` is `0`. This inverts
+  stock K3NG, which raises `brake_az` to release the brake — here that would disable the bridge exactly when trying
+  to rotate.
+- **Unverified on hardware.** If it will not move at all, D2 is active-low → set both brake states HIGH. If it moves
+  the wrong way, swap the motor leads on OUT1/OUT2 (a swap, not a polarity flip). No shoot-through risk: both inputs
+  high just brakes.
 
 The board is azimuth-only (`FEATURE_ELEVATION_CONTROL` stays off). The rotator's full-CCW mechanical stop sits at
 bearing **180°** and it carries **45° of overlap**, so `AZIMUTH_ROTATION_CAPABILITY_EEPROM_INITIALIZE` is **405**
