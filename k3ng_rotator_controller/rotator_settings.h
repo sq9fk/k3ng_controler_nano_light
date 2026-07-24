@@ -175,6 +175,13 @@ You can tweak these, but read the online documentation!
 // brake-release delay is zeroed since there is no mechanical brake to wait for.
 // NOTE: verify D2's polarity on the actual module - if the rotator will not
 // drive with these LOW, D2 is active-low and both should be HIGH instead.
+// SECOND DISABLE INPUT: the MC33186/33886 has TWO disable pins - D1 (active-LOW)
+// and D2 (active-HIGH); outputs are Hi-Z when D1=LOW OR D2=HIGH. This firmware
+// only drives D2 (via brake_az). D1 must be tied to its enabled level (HIGH) on
+// the module/wiring, or the bridge stays dead no matter what D2 does - and then
+// flipping BRAKE_*_STATE to HIGH makes it worse. If it won't drive with D2=LOW,
+// measure D1 FIRST before touching these. Also verify no motor twitch during the
+// Arduino reset window (D6/D7/D8 float Hi-Z until initialize_pins() runs).
 #define AZ_BRAKE_DELAY 0              // no mechanical brake; nothing to wait for
 #define EL_BRAKE_DELAY 3000            // in milliseconds
 

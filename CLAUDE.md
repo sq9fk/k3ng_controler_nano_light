@@ -123,6 +123,13 @@ Consequences baked into `rotator_settings.h`:
 - **Unverified on hardware.** If it will not move at all, D2 is active-low → set both brake states HIGH. If it moves
   the wrong way, swap the motor leads on OUT1/OUT2 (a swap, not a polarity flip). No shoot-through risk: both inputs
   high just brakes.
+- **The chip has a *second* disable input.** The MC33186/33886 disables its outputs when D1 (active-LOW) is low **or**
+  D2 (active-HIGH) is high. The firmware only drives D2 (via `brake_az`); **D1 must be tied HIGH on the module/wiring**
+  or the bridge is dead regardless of D2 — and in that case flipping the brake states to HIGH won't help. On a
+  no-drive symptom, measure D1 before assuming D2 polarity is wrong. Separately, check for a motor twitch during the
+  Arduino reset window: D6/D7/D8 are Hi-Z inputs until `initialize_pins()` runs, so the safe boot state depends on the
+  level shifter pulling IN1/IN2/D2 to defined levels (a BSS138-style shifter floats them HIGH → both-inputs-high brake
+  + D2-high disable, which is safe; verify it).
 
 Drive is plain on/off (full speed); at rest both inputs are low = dynamic braking.
 
