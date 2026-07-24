@@ -105,7 +105,7 @@ actually answers is a short list:
 |---|---|---|
 | `C` | report azimuth (real, 0–359 — see `I` for raw) | `AZ=xxx` |
 | `C2` | report azimuth and elevation | `AZ=xxxEL=000` — the elevation is a dummy, there is no EL axis |
-| `M###` | rotate to **raw** azimuth 180–585 (values below 180 clamp to the CCW stop) | nothing on success, `?>` if over 585 |
+| `M###` | go to azimuth: **000–360 = real** (controller auto-picks the raw target through the overlap), **361–585 = explicit raw** | nothing on success, `?>` over 585 |
 | `L` / `R` | rotate CCW / CW | — |
 | `A` | stop azimuth rotation | — |
 | `S` | stop everything | — |
@@ -115,6 +115,11 @@ actually answers is a short list:
 | `D` | report degrees per position pulse | `DPP=0.500` |
 | `Dxxxx` | set degrees per pulse to `xxxx`/1000 and save to EEPROM immediately | `DPP=0.500`, or `Wait` inside the post-boot lockout |
 | `H` | help | nothing (`OPTION_SERIAL_HELP_TEXT` is off) |
+
+Because `C` reports a real azimuth and `M000`–`M360` takes one (the controller picks the raw target and the shorter
+way through the overlap itself), **a standard GS-232B logging program plugged straight into the USB port works** —
+no special handling needed. The `I` command and the `M361`–`M585` raw form exist for a client that wants to read or
+force the exact turn (which the WiFi bridge uses for its dial), not because plain real-azimuth control is unavailable.
 
 Everything else answers `?>`. Specifically not available: the elevation commands (`B`, `W`, `U`, `D`, `E`), the
 potentiometer calibration commands (`F`, `F2`, `O`, `O2`), the timed-buffer commands (`N`, `T`, multi-point `M`),
