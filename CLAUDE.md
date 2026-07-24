@@ -158,8 +158,8 @@ thing, and several default to a hardcoded 360°:
 ### Position pulse input: LTV-814 optocoupler (why the config is already right)
 
 The reed switch does not drive D2 directly. It drives an **LTV-814 optocoupler**: reed → 1 kΩ → LED on the input
-side; on the output side the phototransistor is open-collector into Arduino D2, with a **100 nF capacitor across
-collector–emitter**. With the internal pull-up on D2:
+side; on the output side the phototransistor is open-collector into Arduino D2 (**D2 → collector, emitter → GND,
+confirmed by the owner**), with a **100 nF capacitor across collector–emitter**. With the internal pull-up on D2:
 
 - reed **closed** → LED on → phototransistor conducts → D2 pulled **sharply low** (the transistor discharges the
   100 nF through its low C–E resistance);
