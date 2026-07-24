@@ -36,7 +36,7 @@ on the network over rotctld, a raw GS-232 socket and a web panel. The `I` and `D
 | Motor drive CW | D6 | → MC33186 **IN1** (see H-bridge note below) |
 | Motor drive CCW | D7 | → MC33186 **IN2** |
 | Bridge enable | D8 | → MC33186 **D2** (active-HIGH disable); held LOW = bridge always enabled |
-| Azimuth position pulse | D2 (INT0) | interrupt-capable pin required; internal pull-up enabled |
+| Azimuth position pulse | D2 (INT0) | reed switch → 1 kΩ → LTV-814 optocoupler; phototransistor (open-collector) → D2 with 100 nF across C–E; internal pull-up on D2; FALLING interrupt (see H-bridge/sensor notes) |
 | Manual CW / CCW buttons | A5 / A4 | moved off A2/A3 to free A2 for the LCD |
 | AZ preset rotary encoder | D10 (CW) / D9 (CCW) | half-step mode, pull-ups enabled |
 | Rotation stall indicator | D13 | onboard Nano LED, no external wiring; goes high when a stall is detected |

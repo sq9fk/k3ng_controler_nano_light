@@ -100,7 +100,7 @@ doubt, physical wiring as reported by whoever has the board in hand wins over th
 | Motor drive CW | D6 | → MC33186 IN1 — the relays/transistors are gone, see the H-bridge note below |
 | Motor drive CCW | D7 | → MC33186 IN2 |
 | Bridge enable | D8 | → MC33186 D2 (active-HIGH disable), held LOW = always enabled |
-| Azimuth position | pulse input, D2 (INT0) | rotor position sensor is a reed switch/"contactron" (dry contact), not analog voltage — `FEATURE_AZ_POSITION_PULSE_INPUT`; calibrate `AZ_POSITION_PULSE_DEG_PER_PULSE` in `rotator_settings.h` against the actual rotor spec; `OPTION_POSITION_PULSE_INPUT_PULLUPS` must stay enabled since a dry contact needs the internal pull-up or D2 floats between pulses |
+| Azimuth position | pulse input, Arduino D2 (INT0) | reed switch/"contactron" (dry contact) — but not wired straight to D2. It drives an **LTV-814 optocoupler**: reed → 1 kΩ → LED; phototransistor (open-collector) → D2 with a **100 nF cap across collector–emitter**. `FEATURE_AZ_POSITION_PULSE_INPUT`; calibrate `AZ_POSITION_PULSE_DEG_PER_PULSE` against the rotor spec. See the pulse-input note below for why the config is already right for this. |
 | AREF | external | board supplies its own reference through R9. `OPTION_EXTERNAL_ANALOG_REFERENCE` is **disabled** and needs to stay that way only as long as nothing reads an analog pin — see below |
 | Manual CW/CCW jog buttons | CW=A5, CCW=A4 | moved off A2/A3 to free A2 for LCD D7 |
 | LCD (16x2, 4-bit) | RS=D12, E=D11, D4=D5, D5=D4, D6=D3, D7=A2 | D7 moved off D2 to free D2 for the azimuth pulse input above |
@@ -154,6 +154,29 @@ thing, and several default to a hardcoded 360°:
   position tracking once the rotor swings into the overlap zone.
 - `OPTION_PRESET_ENCODER_0_360_DEGREES` must stay **disabled** — enabled, it clamps the front-panel preset knob at a
   hardcoded 360°, making the overlap zone unreachable via the encoder.
+
+### Position pulse input: LTV-814 optocoupler (why the config is already right)
+
+The reed switch does not drive D2 directly. It drives an **LTV-814 optocoupler**: reed → 1 kΩ → LED on the input
+side; on the output side the phototransistor is open-collector into Arduino D2, with a **100 nF capacitor across
+collector–emitter**. With the internal pull-up on D2:
+
+- reed **closed** → LED on → phototransistor conducts → D2 pulled **sharply low** (the transistor discharges the
+  100 nF through its low C–E resistance);
+- reed **open** → transistor off → the pull-up (~30 kΩ) charges the 100 nF → D2 rises **slowly**, τ ≈ 3 ms.
+
+So the **falling** edge is sharp and the **rising** edge is a soft RC ramp. The interrupt is attached `FALLING`
+(`attachInterrupt(..., az_position_pulse_interrupt_handler, FALLING)`), so it triggers once per reed closure on the
+clean sharp edge, and the soft rising edge — with the 100 nF filtering reed-release bounce — never triggers it. This
+is a good match, and it means:
+
+- `OPTION_POSITION_PULSE_INPUT_PULLUPS` stays **enabled** — needed for the open-collector phototransistor, not
+  because a bare contact would float.
+- The `FALLING` edge is correct; do not change it to RISING (that would land on the soft RC ramp).
+- The 100 nF gives ~3 ms of hardware debounce, so the software `AZ_POSITION_PULSE_DEBOUNCE` (20 ms) is complementary,
+  not redundant-in-a-bad-way — both sit well below the ~83 ms real inter-pulse gap at typical speed (0.5°/pulse).
+
+No firmware change was needed for this wiring; it is documented here so it is not re-questioned.
 
 ### Fork-added code: AZ pulse debounce (not upstream)
 
