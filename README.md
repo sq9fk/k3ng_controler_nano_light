@@ -105,7 +105,7 @@ actually answers is a short list:
 |---|---|---|
 | `C` | report azimuth (real, 0–359 — see `I` for raw) | `AZ=xxx` |
 | `C2` | report azimuth and elevation | `AZ=xxxEL=000` — the elevation is a dummy, there is no EL axis |
-| `M###` | rotate to azimuth (0–585 raw) | nothing on success, `?>` on a bad value |
+| `M###` | rotate to **raw** azimuth 180–585 (values below 180 clamp to the CCW stop) | nothing on success, `?>` if over 585 |
 | `L` / `R` | rotate CCW / CW | — |
 | `A` | stop azimuth rotation | — |
 | `S` | stop everything | — |
